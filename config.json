@@ -1,0 +1,16 @@
+{
+  "azureDevOps": {
+    "organization": "Klir",
+    "project": "klir",
+    "repositories": ["Klir", "KlirCustomerPortal"],
+    "futureRepositories": ["KlirAngularLibraries", "KlirDataCollector", "KlirMobileApp", "KlirSmartCapture", "KlirMonitoringCalculations", "KlirDataAPI", "KlirCypressTests"]
+  },
+  "sonarCloud": {
+    "organization": "klir",
+    "projects": [
+      { "key": "Klir", "repository": "Klir" },
+      { "key": "KlirAPI", "repository": "Klir" }
+    ]
+  },
+  "cutDate": "2024-01-01"
+}

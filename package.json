@@ -1,0 +1,18 @@
+{
+  "name": "klir-heringer-dashboard",
+  "version": "1.0.0",
+  "description": "Azure DevOps + SonarCloud metrics dashboard with local cache",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2"
+  }
+}
