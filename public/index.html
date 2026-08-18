@@ -17,6 +17,9 @@
           <button type="button" class="nav-link" data-dashboard="comparison">
             Comparison
           </button>
+          <button type="button" class="nav-link" data-dashboard="trend">
+            Trend
+          </button>
         </nav>
       </aside>
 
@@ -350,6 +353,62 @@
       </section>
 
       <p id="cmpError" class="error hidden"></p>
+    </section>
+
+    <section id="dashboard-trend" class="page dashboard-view hidden">
+      <header class="header">
+        <div>
+          <p class="eyebrow">Klir / Heringer</p>
+          <h1>Trend</h1>
+          <p id="trendStatus" class="status">Loading…</p>
+        </div>
+        <button id="trendRefreshBtn" type="button" class="refresh-btn">
+          Refresh data
+        </button>
+      </header>
+
+      <section class="filters" aria-label="Trend filters">
+        <label class="filter-field">
+          <span>Y axis</span>
+          <select id="trendMetric">
+            <option value="storyPoints">Story points sum</option>
+            <option value="userStories">User stories count</option>
+            <option value="techDebts">Tech debt count</option>
+            <option value="bugs">Bug count</option>
+            <option value="pullRequests">Pull request count</option>
+            <option value="linesOfCode">Lines of code sum</option>
+            <option value="coverage">Coverage</option>
+          </select>
+        </label>
+        <label class="filter-field">
+          <span>Start date</span>
+          <input id="trendStartDate" type="date" />
+        </label>
+        <label class="filter-field">
+          <span>End date</span>
+          <input id="trendEndDate" type="date" />
+        </label>
+        <button id="trendClearFiltersBtn" type="button" class="secondary-btn">
+          Clear dates
+        </button>
+      </section>
+
+      <section id="trendEmptyState" class="empty hidden">
+        <p>No local data yet. Click <strong>Refresh data</strong> to load from Azure DevOps and SonarCloud.</p>
+      </section>
+
+      <section id="trendChartCard" class="chart-card hidden">
+        <div class="chart-card-head">
+          <div>
+            <h2 id="trendMetricTitle">Story points sum</h2>
+            <p id="trendMetricHint" class="metric-hint"></p>
+          </div>
+          <p id="trendMetricValue" class="value">—</p>
+        </div>
+        <div id="trendChart" class="trend-chart" aria-label="Trend line chart"></div>
+      </section>
+
+      <p id="trendError" class="error hidden"></p>
     </section>
       </main>
     </div>

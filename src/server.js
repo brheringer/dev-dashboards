@@ -3,6 +3,7 @@ import path from "node:path";
 import { config, rootDirPath } from "./config.js";
 import { readCache, writeCache } from "./cache.js";
 import { computeMetrics } from "./metrics.js";
+import { computeTrend } from "./trend.js";
 import { getWorkItemsPage, getPullRequestsPage } from "./details.js";
 import { fetchClosedWorkItems } from "./sources/adoWorkItems.js";
 import { fetchPullRequests } from "./sources/adoPullRequests.js";
@@ -44,6 +45,17 @@ app.get("/api/metrics", (req, res) => {
   const filters = readDateFilters(req);
   res.json({
     metrics: computeMetrics(cache, filters),
+    refreshing: refreshInProgress,
+    cutDate: cache?.cutDate || config.cutDate,
+  });
+});
+
+app.get("/api/trend", (req, res) => {
+  const cache = readCache();
+  const filters = readDateFilters(req);
+  const metric = typeof req.query.metric === "string" ? req.query.metric : "storyPoints";
+  res.json({
+    trend: computeTrend(cache, { ...filters, metric }),
     refreshing: refreshInProgress,
     cutDate: cache?.cutDate || config.cutDate,
   });

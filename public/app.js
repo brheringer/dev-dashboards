@@ -1,5 +1,6 @@
 import { attachDatePresetMenus, attachRangePresetMenus } from "./datePresetMenu.js";
 import { savePageDates, loadPageDates } from "./dateStorage.js";
+import { renderTrendChart } from "./trendChart.js";
 
 const refreshBtn = document.getElementById("refreshBtn");
 const clearFiltersBtn = document.getElementById("clearFiltersBtn");
@@ -81,6 +82,21 @@ const cmpEmptyState = document.getElementById("cmpEmptyState");
 const cmpMetricsGrid = document.getElementById("cmpMetricsGrid");
 const cmpErrorEl = document.getElementById("cmpError");
 
+const trendRefreshBtn = document.getElementById("trendRefreshBtn");
+const trendClearFiltersBtn = document.getElementById("trendClearFiltersBtn");
+const trendStartDateInput = document.getElementById("trendStartDate");
+const trendEndDateInput = document.getElementById("trendEndDate");
+const trendMetricSelect = document.getElementById("trendMetric");
+const trendStatusEl = document.getElementById("trendStatus");
+const trendEmptyState = document.getElementById("trendEmptyState");
+const trendChartCard = document.getElementById("trendChartCard");
+const trendChartEl = document.getElementById("trendChart");
+const trendErrorEl = document.getElementById("trendError");
+const trendMetricTitle = document.getElementById("trendMetricTitle");
+const trendMetricHint = document.getElementById("trendMetricHint");
+const trendMetricValue = document.getElementById("trendMetricValue");
+const TREND_METRIC_KEY = "klir.dashboard-trend.metric";
+
 function metricSet(prefix) {
   return {
     userStories: document.getElementById(`${prefix}-userStories`),
@@ -105,6 +121,7 @@ const comparisonSets = {
 const PAGE_DATE_INPUTS = {
   "dev-metrics": [startDateInput, endDateInput],
   comparison: [cmpStartDateInput, cmpEndDateInput, cmpStartDate2Input, cmpEndDate2Input],
+  trend: [trendStartDateInput, trendEndDateInput],
 };
 
 function persistPageDates(pageId) {
@@ -118,6 +135,8 @@ function restorePageDates(pageId) {
 let datesReady = false;
 let latestRequestId = 0;
 let latestComparisonRequestId = 0;
+let latestTrendRequestId = 0;
+let lastTrend = null;
 let activeTab = "workItems";
 
 function formatNumber(value) {
@@ -186,6 +205,14 @@ function getFilters() {
   };
 }
 
+function getTrendFilters() {
+  return {
+    startDate: trendStartDateInput.value || null,
+    endDate: trendEndDateInput.value || null,
+    metric: trendMetricSelect.value || "storyPoints",
+  };
+}
+
 function getComparisonPeriod(index) {
   if (index === 2) {
     return {
@@ -223,10 +250,10 @@ function setError(message) {
 }
 
 function setRefreshing(isRefreshing) {
-  refreshBtn.disabled = isRefreshing;
-  refreshBtn.textContent = isRefreshing ? "Refreshing…" : "Refresh data";
-  cmpRefreshBtn.disabled = isRefreshing;
-  cmpRefreshBtn.textContent = isRefreshing ? "Refreshing…" : "Refresh data";
+  for (const btn of [refreshBtn, cmpRefreshBtn, trendRefreshBtn]) {
+    btn.disabled = isRefreshing;
+    btn.textContent = isRefreshing ? "Refreshing…" : "Refresh data";
+  }
 }
 
 function fillMetricSet(set, metrics) {
@@ -327,6 +354,62 @@ function renderMetrics(metrics) {
   );
 
   statusEl.textContent = `Last refreshed: ${formatDateTime(metrics.fetchedAt)} · Filtered ${rangeLabel(metrics)}`;
+}
+
+function setTrendError(message) {
+  if (!message) {
+    trendErrorEl.classList.add("hidden");
+    trendErrorEl.textContent = "";
+    return;
+  }
+  trendErrorEl.textContent = message;
+  trendErrorEl.classList.remove("hidden");
+}
+
+function formatTrendValue(value, unit, { compact = false } = {}) {
+  if (value === null || value === undefined || !Number.isFinite(Number(value))) return "—";
+  if (unit === "percent") return `${Number(value).toFixed(1)}%`;
+  if (compact && Math.abs(Number(value)) >= 10000) {
+    return new Intl.NumberFormat(undefined, {
+      notation: "compact",
+      maximumFractionDigits: 1,
+    }).format(value);
+  }
+  return formatNumber(value);
+}
+
+function renderTrend(trend) {
+  lastTrend = trend;
+  trendChartCard.classList.remove("is-stale");
+
+  if (!trend?.hasData) {
+    trendChartCard.classList.add("hidden");
+    trendEmptyState.classList.remove("hidden");
+    trendStatusEl.textContent = "No cached data loaded yet.";
+    return;
+  }
+
+  trendEmptyState.classList.add("hidden");
+  trendChartCard.classList.remove("hidden");
+  trendMetricTitle.textContent = trend.metricLabel || "Trend";
+  trendMetricHint.textContent = trend.hint || "";
+  trendMetricValue.textContent = formatTrendValue(trend.total, trend.unit);
+
+  const isVisible = !document.getElementById("dashboard-trend").classList.contains("hidden");
+  if (isVisible) {
+    renderTrendChart(trendChartEl, {
+      points: trend.points || [],
+      formatY: (value) => formatTrendValue(value, trend.unit, { compact: true }),
+      yMin: trend.kind === "cumulative" || trend.unit === "percent" ? 0 : null,
+      yMax: trend.unit === "percent" ? 100 : null,
+      emptyMessage:
+        trend.unit === "percent"
+          ? "No coverage history in this date range."
+          : "No data in this date range.",
+    });
+  }
+
+  trendStatusEl.textContent = `Last refreshed: ${formatDateTime(trend.fetchedAt)} · Filtered ${rangeLabel(trend)}`;
 }
 
 function setCmpError(message) {
@@ -483,6 +566,25 @@ function reloadOpenTables({ resetPage = true } = {}) {
   });
 }
 
+async function applyTrendFilters() {
+  const requestId = ++latestTrendRequestId;
+  setTrendError("");
+  trendChartCard.classList.add("is-stale");
+
+  const filters = getTrendFilters();
+  const response = await fetch(
+    `/api/trend${buildQuery({ metric: filters.metric }, filters)}`
+  );
+  if (!response.ok) {
+    throw new Error("Failed to load trend from cache.");
+  }
+
+  const data = await response.json();
+  if (requestId !== latestTrendRequestId) return;
+
+  renderTrend(data.trend);
+}
+
 async function applyComparisonFilters() {
   const requestId = ++latestComparisonRequestId;
   setCmpError("");
@@ -526,6 +628,7 @@ async function applyFilters() {
     setRefreshing(true);
     statusEl.textContent = "Refresh in progress…";
     cmpStatusEl.textContent = "Refresh in progress…";
+    trendStatusEl.textContent = "Refresh in progress…";
   }
 }
 
@@ -533,10 +636,13 @@ async function refreshData() {
   setRefreshing(true);
   setError("");
   setCmpError("");
+  setTrendError("");
   const previousStatus = statusEl.textContent;
   const previousCmpStatus = cmpStatusEl.textContent;
+  const previousTrendStatus = trendStatusEl.textContent;
   statusEl.textContent = "Refreshing from Azure DevOps and SonarCloud…";
   cmpStatusEl.textContent = "Refreshing from Azure DevOps and SonarCloud…";
+  trendStatusEl.textContent = "Refreshing from Azure DevOps and SonarCloud…";
 
   try {
     const response = await fetch(`/api/refresh${buildQuery()}`, { method: "POST" });
@@ -547,15 +653,18 @@ async function refreshData() {
     latestRequestId += 1;
     renderMetrics(data.metrics);
     reloadOpenTables({ resetPage: true });
-    await applyComparisonFilters();
+    await Promise.all([applyComparisonFilters(), applyTrendFilters()]);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Refresh failed.";
     setError(message);
     setCmpError(message);
+    setTrendError(message);
     statusEl.textContent = previousStatus;
     cmpStatusEl.textContent = previousCmpStatus;
+    trendStatusEl.textContent = previousTrendStatus;
     metricsGrid.classList.remove("is-stale");
     cmpMetricsGrid.classList.remove("is-stale");
+    trendChartCard.classList.remove("is-stale");
   } finally {
     setRefreshing(false);
   }
@@ -571,6 +680,23 @@ function onComparisonFiltersChanged() {
   reloadComparisonMetrics();
 }
 
+function persistTrendMetric() {
+  localStorage.setItem(TREND_METRIC_KEY, trendMetricSelect.value);
+}
+
+function restoreTrendMetric() {
+  const saved = localStorage.getItem(TREND_METRIC_KEY);
+  if (!saved) return;
+  const valid = [...trendMetricSelect.options].some((option) => option.value === saved);
+  if (valid) trendMetricSelect.value = saved;
+}
+
+function onTrendFiltersChanged() {
+  persistPageDates("trend");
+  persistTrendMetric();
+  reloadTrendMetrics();
+}
+
 function reloadDevMetrics() {
   applyFilters().catch((error) => {
     metricsGrid.classList.remove("is-stale");
@@ -582,6 +708,13 @@ function reloadComparisonMetrics() {
   applyComparisonFilters().catch((error) => {
     cmpMetricsGrid.classList.remove("is-stale");
     setCmpError(error instanceof Error ? error.message : "Failed to apply filters.");
+  });
+}
+
+function reloadTrendMetrics() {
+  applyTrendFilters().catch((error) => {
+    trendChartCard.classList.remove("is-stale");
+    setTrendError(error instanceof Error ? error.message : "Failed to apply filters.");
   });
 }
 
@@ -599,6 +732,12 @@ function clearComparisonFilters() {
   onComparisonFiltersChanged();
 }
 
+function clearTrendFilters() {
+  trendStartDateInput.value = "";
+  trendEndDateInput.value = "";
+  onTrendFiltersChanged();
+}
+
 async function init() {
   try {
     const response = await fetch("/api/config");
@@ -611,9 +750,12 @@ async function init() {
         cmpStartDateInput.min = cutDate;
         cmpStartDate2Input.min = cutDate;
         cmpStartDateInput.value = cutDate;
+        trendStartDateInput.min = cutDate;
+        trendStartDateInput.value = cutDate;
       }
       endDateInput.value = today;
       cmpEndDateInput.value = today;
+      trendEndDateInput.value = today;
       const lastYear = String(Number(today.slice(0, 4)) - 1);
       cmpStartDate2Input.value = `${lastYear}-01-01`;
       cmpEndDate2Input.value = `${lastYear}-12-31`;
@@ -624,20 +766,27 @@ async function init() {
 
   restorePageDates("dev-metrics");
   restorePageDates("comparison");
+  restorePageDates("trend");
+  restoreTrendMetric();
   datesReady = true;
-  await Promise.all([applyFilters(), applyComparisonFilters()]);
+  await Promise.all([applyFilters(), applyComparisonFilters(), applyTrendFilters()]);
 }
 
 refreshBtn.addEventListener("click", refreshData);
 cmpRefreshBtn.addEventListener("click", refreshData);
+trendRefreshBtn.addEventListener("click", refreshData);
 clearFiltersBtn.addEventListener("click", clearFilters);
 cmpClearFiltersBtn.addEventListener("click", clearComparisonFilters);
+trendClearFiltersBtn.addEventListener("click", clearTrendFilters);
 startDateInput.addEventListener("change", onFiltersChanged);
 endDateInput.addEventListener("change", onFiltersChanged);
 cmpStartDateInput.addEventListener("change", onComparisonFiltersChanged);
 cmpEndDateInput.addEventListener("change", onComparisonFiltersChanged);
 cmpStartDate2Input.addEventListener("change", onComparisonFiltersChanged);
 cmpEndDate2Input.addEventListener("change", onComparisonFiltersChanged);
+trendStartDateInput.addEventListener("change", onTrendFiltersChanged);
+trendEndDateInput.addEventListener("change", onTrendFiltersChanged);
+trendMetricSelect.addEventListener("change", onTrendFiltersChanged);
 
 tabs.workItems.addEventListener("click", () => setActiveTab("workItems"));
 tabs.pullRequests.addEventListener("click", () => setActiveTab("pullRequests"));
@@ -683,6 +832,10 @@ const DASHBOARDS = {
     title: "Klir Comparison by Heringer",
     view: document.getElementById("dashboard-comparison"),
   },
+  trend: {
+    title: "Klir Trend by Heringer",
+    view: document.getElementById("dashboard-trend"),
+  },
 };
 
 const navLinks = document.querySelectorAll(".nav-link[data-dashboard]");
@@ -710,7 +863,10 @@ function showDashboard(id) {
 
   restorePageDates(dashboardId);
   if (dashboardId === "comparison") reloadComparisonMetrics();
-  else reloadDevMetrics();
+  else if (dashboardId === "trend") {
+    if (lastTrend) renderTrend(lastTrend);
+    reloadTrendMetrics();
+  } else reloadDevMetrics();
 }
 
 for (const link of navLinks) {
@@ -728,6 +884,7 @@ attachDatePresetMenus();
 attachRangePresetMenus({
   devMetricsClearBtn: clearFiltersBtn,
   comparisonClearBtn: cmpClearFiltersBtn,
+  trendClearBtn: trendClearFiltersBtn,
   onDevMetricsRange: ({ start, end }) => {
     startDateInput.value = start;
     endDateInput.value = end;
@@ -739,6 +896,11 @@ attachRangePresetMenus({
     cmpStartDate2Input.value = start2;
     cmpEndDate2Input.value = end2;
     onComparisonFiltersChanged();
+  },
+  onTrendRange: ({ start, end }) => {
+    trendStartDateInput.value = start;
+    trendEndDateInput.value = end;
+    onTrendFiltersChanged();
   },
 });
 

@@ -9,7 +9,7 @@ function parseTags(tags) {
     .filter(Boolean);
 }
 
-function hasTechDebtTag(tags) {
+export function hasTechDebtTag(tags) {
   return parseTags(tags).some((tag) => tag.toLowerCase() === TECH_DEBT_TAG);
 }
 
@@ -72,7 +72,7 @@ function measuresAsOf(project, bound, { allowSnapshotFallback = true } = {}) {
   return { ncloc, coverage, asOf };
 }
 
-function aggregateCode(projects, bound, options) {
+export function aggregateCode(projects, bound, options) {
   let totalNcloc = 0;
   let weightedCoverage = 0;
   let coveredNcloc = 0;
