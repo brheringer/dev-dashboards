@@ -142,6 +142,7 @@ const wiRefreshBtn = document.getElementById("wiRefreshBtn");
 const wiClearFiltersBtn = document.getElementById("wiClearFiltersBtn");
 const wiStartDateInput = document.getElementById("wiStartDate");
 const wiEndDateInput = document.getElementById("wiEndDate");
+const wiAreaPathSelect = document.getElementById("wiAreaPath");
 const wiStatusEl = document.getElementById("wiStatus");
 const wiEmptyState = document.getElementById("wiEmptyState");
 const wiResults = document.getElementById("wiResults");
@@ -185,7 +186,7 @@ const comparisonSets = {
 
 const PAGE_DATE_INPUTS = {
   "dev-metrics": [startDateInput, endDateInput],
-  "work-items": [wiStartDateInput, wiEndDateInput],
+  "work-items": [wiStartDateInput, wiEndDateInput, wiAreaPathSelect],
   comparison: [cmpStartDateInput, cmpEndDateInput, cmpStartDate2Input, cmpEndDate2Input],
   trend: [trendStartDateInput, trendEndDateInput],
   repos: [reposStartDateInput, reposEndDateInput],
@@ -279,6 +280,7 @@ function getWorkItemsFilters() {
   return {
     startDate: wiStartDateInput?.value || null,
     endDate: wiEndDateInput?.value || null,
+    areaPath: wiAreaPathSelect?.value || null,
   };
 }
 
@@ -553,7 +555,9 @@ function renderWorkItemsDashboard(data) {
   wiEmptyState.classList.add("hidden");
   wiResults.classList.remove("hidden");
   requestAnimationFrame(() => paintWorkItemsCharts(data));
-  wiStatusEl.textContent = `Last refreshed: ${formatDateTime(data.fetchedAt)} · Filtered ${rangeLabel(data)}`;
+  wiStatusEl.textContent = `Last refreshed: ${formatDateTime(data.fetchedAt)} · Filtered ${rangeLabel(data)}${
+    data.areaPath ? ` · ${data.areaPath}` : ""
+  }`;
 }
 
 function setTrendError(message) {
@@ -715,7 +719,7 @@ function renderPullRequestsRows(items) {
   const state = tableState.pullRequests;
   if (!items.length) {
     state.body.innerHTML =
-      '<tr><td colspan="3" class="table-empty">No pull requests in this date range.</td></tr>';
+      '<tr><td colspan="4" class="table-empty">No pull requests in this date range.</td></tr>';
     return;
   }
 
@@ -725,6 +729,7 @@ function renderPullRequestsRows(items) {
         <td>${escapeHtml(item.id)}</td>
         <td>${escapeHtml(formatDateTime(item.creationDate))}</td>
         <td>${escapeHtml(item.repository || "—")}</td>
+        <td>${escapeHtml(item.author || "—")}</td>
       </tr>`;
     })
     .join("");
@@ -747,7 +752,7 @@ async function loadTable(kind, { resetPage = false } = {}) {
 
   const requestId = ++state.requestId;
   state.body.innerHTML =
-    `<tr><td colspan="${kind === "workItems" ? 7 : 3}" class="table-empty">Loading…</td></tr>`;
+    `<tr><td colspan="${kind === "workItems" ? 7 : 4}" class="table-empty">Loading…</td></tr>`;
 
   const endpoint =
     kind === "workItems" ? "/api/details/work-items" : "/api/details/pull-requests";
@@ -803,12 +808,37 @@ function reloadOpenTables({ resetPage = true } = {}) {
   });
 }
 
+function fillAreaPathOptions(areaPaths) {
+  if (!wiAreaPathSelect) return;
+  const previous = wiAreaPathSelect.value;
+  const paths = Array.isArray(areaPaths) ? areaPaths : [];
+
+  wiAreaPathSelect.innerHTML = "";
+  const allOption = document.createElement("option");
+  allOption.value = "";
+  allOption.textContent = "All area paths";
+  wiAreaPathSelect.appendChild(allOption);
+
+  for (const path of paths) {
+    const option = document.createElement("option");
+    option.value = path;
+    option.textContent = path;
+    wiAreaPathSelect.appendChild(option);
+  }
+
+  const stillValid = [...wiAreaPathSelect.options].some((option) => option.value === previous);
+  wiAreaPathSelect.value = stillValid ? previous : "";
+}
+
 async function applyWorkItemsFilters() {
   const requestId = ++latestWorkItemsRequestId;
   setWorkItemsError("");
   wiResults.classList.add("is-stale");
 
-  const response = await fetch(`/api/work-items${buildQuery({}, getWorkItemsFilters())}`);
+  const filters = getWorkItemsFilters();
+  const response = await fetch(
+    `/api/work-items${buildQuery({ areaPath: filters.areaPath }, filters)}`
+  );
   if (!response.ok) {
     throw new Error("Failed to load work item charts from cache.");
   }
@@ -816,6 +846,7 @@ async function applyWorkItemsFilters() {
   const data = await response.json();
   if (requestId !== latestWorkItemsRequestId) return;
 
+  fillAreaPathOptions(data.areaPaths);
   renderWorkItemsDashboard(data.workItems);
 }
 
@@ -1065,8 +1096,9 @@ async function init() {
   try {
     const response = await fetch("/api/config");
     if (response.ok) {
-      const { cutDate, branding: nextBranding } = await response.json();
+      const { cutDate, branding: nextBranding, areaPaths } = await response.json();
       applyBranding(nextBranding);
+      fillAreaPathOptions(areaPaths);
       const today = todayIsoDate();
       if (cutDate) {
         if (startDateInput) {
@@ -1168,6 +1200,7 @@ function bindPage() {
   reposEndDateInput?.addEventListener("change", onReposFiltersChanged);
   wiStartDateInput?.addEventListener("change", onWorkItemsFiltersChanged);
   wiEndDateInput?.addEventListener("change", onWorkItemsFiltersChanged);
+  wiAreaPathSelect?.addEventListener("change", onWorkItemsFiltersChanged);
 
   for (const [key, tab] of Object.entries(wiChartTabs)) {
     tab?.addEventListener("click", () => setWorkItemsChartTab(key));

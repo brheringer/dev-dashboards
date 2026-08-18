@@ -10,7 +10,7 @@
         </button>
       </header>
 
-      <section class="filters" aria-label="Date filters">
+      <section class="filters" aria-label="Work item filters">
         <label class="filter-field">
           <span>Start date</span>
           <input id="wiStartDate" type="date" />
@@ -18,6 +18,12 @@
         <label class="filter-field">
           <span>End date</span>
           <input id="wiEndDate" type="date" />
+        </label>
+        <label class="filter-field filter-field-area">
+          <span>Area path</span>
+          <select id="wiAreaPath">
+            <option value="">All area paths</option>
+          </select>
         </label>
         <button id="wiClearFiltersBtn" type="button" class="secondary-btn">
           Clear dates

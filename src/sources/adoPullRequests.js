@@ -45,6 +45,7 @@ async function fetchPullRequestsForRepo(repositoryName, cutDate) {
         id: pr.pullRequestId,
         creationDate,
         repository: repositoryName,
+        author: pr.createdBy?.displayName || pr.createdBy?.uniqueName || null,
       });
     }
 

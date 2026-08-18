@@ -70,6 +70,7 @@ function emptyPayload(filters) {
     fetchedAt: null,
     startDate: filters.startDate || null,
     endDate: filters.endDate || null,
+    areaPath: filters.areaPath || null,
     cutDate: null,
     totals: emptyTotals(),
     points: [],
@@ -77,9 +78,32 @@ function emptyPayload(filters) {
 }
 
 /**
+ * Unique area paths from cached work items, sorted for the filter dropdown.
+ * @param {object[]|null|undefined} workItems
+ */
+export function listAreaPaths(workItems = []) {
+  const values = new Set();
+  for (const item of workItems) {
+    const areaPath = typeof item?.areaPath === "string" ? item.areaPath.trim() : "";
+    if (areaPath) values.add(areaPath);
+  }
+  return [...values].sort((a, b) => a.localeCompare(b));
+}
+
+export function areaPathsFromCache(cache) {
+  if (Array.isArray(cache?.areaPaths)) return cache.areaPaths;
+  return listAreaPaths(cache?.workItems);
+}
+
+function matchesAreaPath(item, areaPath) {
+  if (!areaPath) return true;
+  return (item.areaPath || "") === areaPath;
+}
+
+/**
  * Totals and accumulated daily counts for the Work Items dashboard.
  * @param {object|null} cache
- * @param {{ startDate?: string|null, endDate?: string|null }} [filters]
+ * @param {{ startDate?: string|null, endDate?: string|null, areaPath?: string|null }} [filters]
  */
 export function computeWorkItems(cache, filters = {}) {
   if (!cache) {
@@ -87,6 +111,7 @@ export function computeWorkItems(cache, filters = {}) {
   }
 
   const workItems = cache.workItems || [];
+  const areaPath = filters.areaPath || null;
   const endDate = filters.endDate || todayIsoDate();
   const startDate =
     filters.startDate || cache.cutDate || earliestClosedDay(workItems) || endDate;
@@ -99,6 +124,7 @@ export function computeWorkItems(cache, filters = {}) {
 
   for (const item of workItems) {
     if (!isWithinRange(item.closedDate, start, end)) continue;
+    if (!matchesAreaPath(item, areaPath)) continue;
     const series = classifyWorkItem(item);
     if (!series) continue;
 
@@ -133,6 +159,7 @@ export function computeWorkItems(cache, filters = {}) {
     fetchedAt: cache.fetchedAt || null,
     startDate,
     endDate,
+    areaPath,
     cutDate: cache.cutDate || null,
     totals,
     points,

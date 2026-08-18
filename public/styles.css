@@ -215,6 +215,16 @@ h1 {
   background-position: right 0.75rem center;
 }
 
+.filter-field-area {
+  min-width: 260px;
+  max-width: 420px;
+}
+
+.filter-field-area select {
+  min-width: 260px;
+  max-width: 420px;
+}
+
 .filter-field input[type="date"]:focus,
 .filter-field select:focus {
   outline: 2px solid rgba(61, 186, 122, 0.45);
