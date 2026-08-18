@@ -1,4 +1,4 @@
-const STORAGE_PREFIX = "klir.dashboard-dates.";
+const STORAGE_PREFIX = "brheringer.dashboard-dates.";
 
 function storageKey(pageId) {
   return `${STORAGE_PREFIX}${pageId}`;

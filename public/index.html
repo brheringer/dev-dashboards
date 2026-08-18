@@ -3,13 +3,14 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Dev Metrics</title>
+    <title>{{branding.product}} Dev Metrics by {{branding.author}}</title>
+    <script type="application/json" id="branding-config">{{branding.json}}</script>
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
     <div class="app-shell">
       <aside class="sidebar">
-        <p class="sidebar-brand">Klir / Heringer</p>
+        <p class="sidebar-brand" data-brand-mark>{{branding.author}} / {{branding.product}}</p>
         <nav class="sidebar-nav" aria-label="Dashboards">
           <button type="button" class="nav-link active" data-dashboard="dev-metrics">
             Dev Metrics
@@ -33,7 +34,7 @@
     <section id="dashboard-dev-metrics" class="page dashboard-view">
       <header class="header">
         <div>
-          <p class="eyebrow">Klir / Heringer</p>
+          <p class="eyebrow" data-brand-mark>{{branding.author}} / {{branding.product}}</p>
           <h1>Dev Metrics</h1>
           <p id="status" class="status">Loading…</p>
         </div>
@@ -213,7 +214,7 @@
     <section id="dashboard-work-items" class="page dashboard-view hidden">
       <header class="header">
         <div>
-          <p class="eyebrow">Klir / Heringer</p>
+          <p class="eyebrow" data-brand-mark>{{branding.author}} / {{branding.product}}</p>
           <h1>Work Items</h1>
           <p id="wiStatus" class="status">Loading…</p>
         </div>
@@ -316,7 +317,7 @@
     <section id="dashboard-comparison" class="page dashboard-view hidden">
       <header class="header">
         <div>
-          <p class="eyebrow">Klir / Heringer</p>
+          <p class="eyebrow" data-brand-mark>{{branding.author}} / {{branding.product}}</p>
           <h1>Comparison</h1>
           <p id="cmpStatus" class="status">Loading…</p>
         </div>
@@ -485,7 +486,7 @@
     <section id="dashboard-trend" class="page dashboard-view hidden">
       <header class="header">
         <div>
-          <p class="eyebrow">Klir / Heringer</p>
+          <p class="eyebrow" data-brand-mark>{{branding.author}} / {{branding.product}}</p>
           <h1>Trend</h1>
           <p id="trendStatus" class="status">Loading…</p>
         </div>
@@ -556,7 +557,7 @@
     <section id="dashboard-repos" class="page dashboard-view hidden">
       <header class="header">
         <div>
-          <p class="eyebrow">Klir / Heringer</p>
+          <p class="eyebrow" data-brand-mark>{{branding.author}} / {{branding.product}}</p>
           <h1>Repos</h1>
           <p id="reposStatus" class="status">Loading…</p>
         </div>

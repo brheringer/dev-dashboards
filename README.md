@@ -1,4 +1,4 @@
-# Klir Heringer Dashboard
+# brheringer Dev Dashboards
 
 Small Node.js app that loads delivery metrics from **Azure DevOps** and **SonarCloud**, stores them in a local cache, and renders a simple dashboard. Data is only refreshed when you click **Refresh data**.
 
@@ -46,6 +46,10 @@ SONAR_TOKEN=your-sonarcloud-token
 
 ```json
 {
+  "branding": {
+    "author": "brheringer",
+    "product": "whatever"
+  },
   "azureDevOps": {
     "organization": "your-org",
     "project": "your-project",
@@ -62,7 +66,7 @@ SONAR_TOKEN=your-sonarcloud-token
 }
 ```
 
-`cutDate` is global: work items use closed date ≥ cut date; PRs use creation date ≥ cut date.
+`branding.author` and `branding.product` are shown in the sidebar and page headers as `author / product`. `cutDate` is global: work items use closed date ≥ cut date; PRs use creation date ≥ cut date.
 
 ## Run
 

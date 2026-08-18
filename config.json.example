@@ -1,0 +1,19 @@
+{
+  "branding": {
+    "author": "brheringer",
+    "product": "org"
+  },
+  "azureDevOps": {
+    "organization": "org",
+    "project": "proj",
+    "repositories": ["repo1", "repo2"]
+  },
+  "sonarCloud": {
+    "organization": "org",
+    "projects": [
+      { "key": "proj1", "repository": "repo1" },
+      { "key": "proj2", "repository": "repo2" }
+    ]
+  },
+  "cutDate": "2024-01-01"
+}

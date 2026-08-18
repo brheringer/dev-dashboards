@@ -1,4 +1,5 @@
 import express from "express";
+import fs from "node:fs";
 import path from "node:path";
 import { config, rootDirPath } from "./config.js";
 import { readCache, writeCache } from "./cache.js";
@@ -13,9 +14,34 @@ import { fetchSonarMeasures } from "./sources/sonarCloud.js";
 
 const app = express();
 let refreshInProgress = false;
+const publicDir = path.join(rootDirPath, "public");
+const indexPath = path.join(publicDir, "index.html");
 
 app.use(express.json());
-app.use(express.static(path.join(rootDirPath, "public")));
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function renderIndexHtml() {
+  const template = fs.readFileSync(indexPath, "utf8");
+  const { author, product } = config.branding;
+  return template
+    .replaceAll("{{branding.json}}", JSON.stringify({ author, product }).replaceAll("<", "\\u003c"))
+    .replaceAll("{{branding.author}}", escapeHtml(author))
+    .replaceAll("{{branding.product}}", escapeHtml(product));
+}
+
+app.get(["/", "/index.html"], (_req, res) => {
+  res.type("html").send(renderIndexHtml());
+});
+
+app.use(express.static(publicDir, { index: false }));
 
 function readDateFilters(req) {
   const startDate = typeof req.query.startDate === "string" ? req.query.startDate : null;
@@ -39,6 +65,7 @@ app.get("/api/config", (_req, res) => {
   res.json({
     cutDate: cache?.cutDate || config.cutDate,
     fetchedAt: cache?.fetchedAt || null,
+    branding: config.branding,
   });
 });
 

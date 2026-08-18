@@ -104,7 +104,7 @@ const trendMetricHint = document.getElementById("trendMetricHint");
 const trendMetricValue = document.getElementById("trendMetricValue");
 const trendFirstDerivative = document.getElementById("trendFirstDerivative");
 const trendSecondDerivative = document.getElementById("trendSecondDerivative");
-const TREND_METRIC_KEY = "klir.dashboard-trend.metric";
+const TREND_METRIC_KEY = "brheringer.dashboard-trend.metric";
 
 const reposRefreshBtn = document.getElementById("reposRefreshBtn");
 const reposClearFiltersBtn = document.getElementById("reposClearFiltersBtn");
@@ -1045,7 +1045,8 @@ async function init() {
   try {
     const response = await fetch("/api/config");
     if (response.ok) {
-      const { cutDate } = await response.json();
+      const { cutDate, branding: nextBranding } = await response.json();
+      applyBranding(nextBranding);
       const today = todayIsoDate();
       if (cutDate) {
         startDateInput.min = cutDate;
@@ -1154,33 +1155,68 @@ for (const kind of ["workItems", "pullRequests"]) {
 
 const DASHBOARDS = {
   "dev-metrics": {
-    title: "Klir Dev Metrics by Heringer",
+    name: "Dev Metrics",
     view: document.getElementById("dashboard-dev-metrics"),
   },
   "work-items": {
-    title: "Klir Work Items by Heringer",
+    name: "Work Items",
     view: document.getElementById("dashboard-work-items"),
   },
   comparison: {
-    title: "Klir Comparison by Heringer",
+    name: "Comparison",
     view: document.getElementById("dashboard-comparison"),
   },
   trend: {
-    title: "Klir Trend by Heringer",
+    name: "Trend",
     view: document.getElementById("dashboard-trend"),
   },
   repos: {
-    title: "Klir Repos by Heringer",
+    name: "Repos",
     view: document.getElementById("dashboard-repos"),
   },
 };
+
+function readEmbeddedBranding() {
+  const el = document.getElementById("branding-config");
+  if (!el?.textContent) return { author: "", product: "" };
+  try {
+    const parsed = JSON.parse(el.textContent);
+    return {
+      author: typeof parsed.author === "string" ? parsed.author : "",
+      product: typeof parsed.product === "string" ? parsed.product : "",
+    };
+  } catch {
+    return { author: "", product: "" };
+  }
+}
+
+let branding = readEmbeddedBranding();
+let currentDashboardId = "dev-metrics";
+
+function brandMark() {
+  return `${branding.author} / ${branding.product}`;
+}
+
+function documentTitleFor(dashboardId) {
+  const name = DASHBOARDS[dashboardId]?.name || "Dev Metrics";
+  return `${branding.product} ${name} by ${branding.author}`;
+}
+
+function applyBranding(nextBranding) {
+  if (nextBranding?.author) branding.author = nextBranding.author;
+  if (nextBranding?.product) branding.product = nextBranding.product;
+  const mark = brandMark();
+  for (const el of document.querySelectorAll("[data-brand-mark]")) {
+    el.textContent = mark;
+  }
+  document.title = documentTitleFor(currentDashboardId);
+}
 
 const navLinks = document.querySelectorAll(".nav-link[data-dashboard]");
 
 function showDashboard(id) {
   const requested = id === "overview" ? "comparison" : id;
   const dashboardId = DASHBOARDS[requested] ? requested : "dev-metrics";
-  const dashboard = DASHBOARDS[dashboardId];
 
   for (const [key, entry] of Object.entries(DASHBOARDS)) {
     const isActive = key === dashboardId;
@@ -1191,7 +1227,8 @@ function showDashboard(id) {
     link.classList.toggle("active", link.dataset.dashboard === dashboardId);
   }
 
-  document.title = dashboard.title;
+  currentDashboardId = dashboardId;
+  document.title = documentTitleFor(dashboardId);
   if (window.location.hash !== `#${dashboardId}`) {
     window.location.hash = dashboardId;
   }

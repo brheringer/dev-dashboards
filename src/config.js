@@ -20,6 +20,10 @@ export const rootDirPath = rootDir;
 
 export const config = {
   cutDate: fileConfig.cutDate,
+  branding: {
+    author: fileConfig.branding?.author || "brheringer",
+    product: fileConfig.branding?.product || "undefined-product",
+  },
   azureDevOps: {
     organization: process.env.ADO_ORG || fileConfig.azureDevOps.organization,
     project: fileConfig.azureDevOps.project,

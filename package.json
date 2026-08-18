@@ -1,5 +1,5 @@
 {
-  "name": "klir-heringer-dashboard",
+  "name": "brheringer-dev-dashboards",
   "version": "1.0.0",
   "description": "Azure DevOps + SonarCloud metrics dashboard with local cache",
   "type": "module",
