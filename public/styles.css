@@ -656,6 +656,22 @@ h1 {
   border-bottom: 0;
 }
 
+.data-table td.num,
+.data-table th.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.repos-table-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.repos-table-card .table-wrap {
+  border: 0;
+  border-radius: 0;
+}
+
 .table-empty {
   color: var(--muted);
   white-space: normal !important;

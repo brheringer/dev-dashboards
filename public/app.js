@@ -99,6 +99,16 @@ const trendFirstDerivative = document.getElementById("trendFirstDerivative");
 const trendSecondDerivative = document.getElementById("trendSecondDerivative");
 const TREND_METRIC_KEY = "klir.dashboard-trend.metric";
 
+const reposRefreshBtn = document.getElementById("reposRefreshBtn");
+const reposClearFiltersBtn = document.getElementById("reposClearFiltersBtn");
+const reposStartDateInput = document.getElementById("reposStartDate");
+const reposEndDateInput = document.getElementById("reposEndDate");
+const reposStatusEl = document.getElementById("reposStatus");
+const reposEmptyState = document.getElementById("reposEmptyState");
+const reposTableCard = document.getElementById("reposTableCard");
+const reposBody = document.getElementById("reposBody");
+const reposErrorEl = document.getElementById("reposError");
+
 function metricSet(prefix) {
   return {
     userStories: document.getElementById(`${prefix}-userStories`),
@@ -124,6 +134,7 @@ const PAGE_DATE_INPUTS = {
   "dev-metrics": [startDateInput, endDateInput],
   comparison: [cmpStartDateInput, cmpEndDateInput, cmpStartDate2Input, cmpEndDate2Input],
   trend: [trendStartDateInput, trendEndDateInput],
+  repos: [reposStartDateInput, reposEndDateInput],
 };
 
 function persistPageDates(pageId) {
@@ -138,6 +149,7 @@ let datesReady = false;
 let latestRequestId = 0;
 let latestComparisonRequestId = 0;
 let latestTrendRequestId = 0;
+let latestReposRequestId = 0;
 let lastTrend = null;
 let activeTab = "workItems";
 
@@ -207,6 +219,13 @@ function getFilters() {
   };
 }
 
+function getReposFilters() {
+  return {
+    startDate: reposStartDateInput.value || null,
+    endDate: reposEndDateInput.value || null,
+  };
+}
+
 function getTrendFilters() {
   return {
     startDate: trendStartDateInput.value || null,
@@ -252,7 +271,7 @@ function setError(message) {
 }
 
 function setRefreshing(isRefreshing) {
-  for (const btn of [refreshBtn, cmpRefreshBtn, trendRefreshBtn]) {
+  for (const btn of [refreshBtn, cmpRefreshBtn, trendRefreshBtn, reposRefreshBtn]) {
     btn.disabled = isRefreshing;
     btn.textContent = isRefreshing ? "Refreshing…" : "Refresh data";
   }
@@ -356,6 +375,57 @@ function renderMetrics(metrics) {
   );
 
   statusEl.textContent = `Last refreshed: ${formatDateTime(metrics.fetchedAt)} · Filtered ${rangeLabel(metrics)}`;
+}
+
+function setReposError(message) {
+  if (!message) {
+    reposErrorEl.classList.add("hidden");
+    reposErrorEl.textContent = "";
+    return;
+  }
+  reposErrorEl.textContent = message;
+  reposErrorEl.classList.remove("hidden");
+}
+
+function renderRepos(data) {
+  reposTableCard.classList.remove("is-stale");
+
+  if (!data?.hasData) {
+    reposTableCard.classList.add("hidden");
+    reposEmptyState.classList.remove("hidden");
+    reposStatusEl.textContent = "No cached data loaded yet.";
+    return;
+  }
+
+  reposEmptyState.classList.add("hidden");
+  reposTableCard.classList.remove("hidden");
+
+  const rows = data.repos || [];
+  if (!rows.length) {
+    reposBody.innerHTML =
+      '<tr><td colspan="4" class="table-empty">No repositories in this date range.</td></tr>';
+  } else {
+    reposBody.innerHTML = rows
+      .map((row) => {
+        const loc =
+          row.linesOfCode === null || row.linesOfCode === undefined
+            ? "—"
+            : formatNumber(row.linesOfCode);
+        const coverage =
+          row.coverage === null || row.coverage === undefined
+            ? "—"
+            : `${row.coverage}%`;
+        return `<tr>
+          <td>${escapeHtml(row.repository)}</td>
+          <td class="num">${formatNumber(row.pullRequests)}</td>
+          <td class="num">${loc}</td>
+          <td class="num">${coverage}</td>
+        </tr>`;
+      })
+      .join("");
+  }
+
+  reposStatusEl.textContent = `Last refreshed: ${formatDateTime(data.fetchedAt)} · Filtered ${rangeLabel(data)}`;
 }
 
 function setTrendError(message) {
@@ -606,6 +676,22 @@ function reloadOpenTables({ resetPage = true } = {}) {
   });
 }
 
+async function applyReposFilters() {
+  const requestId = ++latestReposRequestId;
+  setReposError("");
+  reposTableCard.classList.add("is-stale");
+
+  const response = await fetch(`/api/repos${buildQuery({}, getReposFilters())}`);
+  if (!response.ok) {
+    throw new Error("Failed to load repository summaries from cache.");
+  }
+
+  const data = await response.json();
+  if (requestId !== latestReposRequestId) return;
+
+  renderRepos(data.repos);
+}
+
 async function applyTrendFilters() {
   const requestId = ++latestTrendRequestId;
   setTrendError("");
@@ -669,6 +755,7 @@ async function applyFilters() {
     statusEl.textContent = "Refresh in progress…";
     cmpStatusEl.textContent = "Refresh in progress…";
     trendStatusEl.textContent = "Refresh in progress…";
+    reposStatusEl.textContent = "Refresh in progress…";
   }
 }
 
@@ -677,12 +764,15 @@ async function refreshData() {
   setError("");
   setCmpError("");
   setTrendError("");
+  setReposError("");
   const previousStatus = statusEl.textContent;
   const previousCmpStatus = cmpStatusEl.textContent;
   const previousTrendStatus = trendStatusEl.textContent;
+  const previousReposStatus = reposStatusEl.textContent;
   statusEl.textContent = "Refreshing from Azure DevOps and SonarCloud…";
   cmpStatusEl.textContent = "Refreshing from Azure DevOps and SonarCloud…";
   trendStatusEl.textContent = "Refreshing from Azure DevOps and SonarCloud…";
+  reposStatusEl.textContent = "Refreshing from Azure DevOps and SonarCloud…";
 
   try {
     const response = await fetch(`/api/refresh${buildQuery()}`, { method: "POST" });
@@ -693,18 +783,21 @@ async function refreshData() {
     latestRequestId += 1;
     renderMetrics(data.metrics);
     reloadOpenTables({ resetPage: true });
-    await Promise.all([applyComparisonFilters(), applyTrendFilters()]);
+    await Promise.all([applyComparisonFilters(), applyTrendFilters(), applyReposFilters()]);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Refresh failed.";
     setError(message);
     setCmpError(message);
     setTrendError(message);
+    setReposError(message);
     statusEl.textContent = previousStatus;
     cmpStatusEl.textContent = previousCmpStatus;
     trendStatusEl.textContent = previousTrendStatus;
+    reposStatusEl.textContent = previousReposStatus;
     metricsGrid.classList.remove("is-stale");
     cmpMetricsGrid.classList.remove("is-stale");
     trendResults.classList.remove("is-stale");
+    reposTableCard.classList.remove("is-stale");
   } finally {
     setRefreshing(false);
   }
@@ -737,6 +830,11 @@ function onTrendFiltersChanged() {
   reloadTrendMetrics();
 }
 
+function onReposFiltersChanged() {
+  persistPageDates("repos");
+  reloadRepos();
+}
+
 function reloadDevMetrics() {
   applyFilters().catch((error) => {
     metricsGrid.classList.remove("is-stale");
@@ -755,6 +853,13 @@ function reloadTrendMetrics() {
   applyTrendFilters().catch((error) => {
     trendResults.classList.remove("is-stale");
     setTrendError(error instanceof Error ? error.message : "Failed to apply filters.");
+  });
+}
+
+function reloadRepos() {
+  applyReposFilters().catch((error) => {
+    reposTableCard.classList.remove("is-stale");
+    setReposError(error instanceof Error ? error.message : "Failed to apply filters.");
   });
 }
 
@@ -778,6 +883,12 @@ function clearTrendFilters() {
   onTrendFiltersChanged();
 }
 
+function clearReposFilters() {
+  reposStartDateInput.value = "";
+  reposEndDateInput.value = "";
+  onReposFiltersChanged();
+}
+
 async function init() {
   try {
     const response = await fetch("/api/config");
@@ -792,10 +903,13 @@ async function init() {
         cmpStartDateInput.value = cutDate;
         trendStartDateInput.min = cutDate;
         trendStartDateInput.value = cutDate;
+        reposStartDateInput.min = cutDate;
+        reposStartDateInput.value = cutDate;
       }
       endDateInput.value = today;
       cmpEndDateInput.value = today;
       trendEndDateInput.value = today;
+      reposEndDateInput.value = today;
       const lastYear = String(Number(today.slice(0, 4)) - 1);
       cmpStartDate2Input.value = `${lastYear}-01-01`;
       cmpEndDate2Input.value = `${lastYear}-12-31`;
@@ -807,17 +921,25 @@ async function init() {
   restorePageDates("dev-metrics");
   restorePageDates("comparison");
   restorePageDates("trend");
+  restorePageDates("repos");
   restoreTrendMetric();
   datesReady = true;
-  await Promise.all([applyFilters(), applyComparisonFilters(), applyTrendFilters()]);
+  await Promise.all([
+    applyFilters(),
+    applyComparisonFilters(),
+    applyTrendFilters(),
+    applyReposFilters(),
+  ]);
 }
 
 refreshBtn.addEventListener("click", refreshData);
 cmpRefreshBtn.addEventListener("click", refreshData);
 trendRefreshBtn.addEventListener("click", refreshData);
+reposRefreshBtn.addEventListener("click", refreshData);
 clearFiltersBtn.addEventListener("click", clearFilters);
 cmpClearFiltersBtn.addEventListener("click", clearComparisonFilters);
 trendClearFiltersBtn.addEventListener("click", clearTrendFilters);
+reposClearFiltersBtn.addEventListener("click", clearReposFilters);
 startDateInput.addEventListener("change", onFiltersChanged);
 endDateInput.addEventListener("change", onFiltersChanged);
 cmpStartDateInput.addEventListener("change", onComparisonFiltersChanged);
@@ -827,6 +949,8 @@ cmpEndDate2Input.addEventListener("change", onComparisonFiltersChanged);
 trendStartDateInput.addEventListener("change", onTrendFiltersChanged);
 trendEndDateInput.addEventListener("change", onTrendFiltersChanged);
 trendMetricSelect.addEventListener("change", onTrendFiltersChanged);
+reposStartDateInput.addEventListener("change", onReposFiltersChanged);
+reposEndDateInput.addEventListener("change", onReposFiltersChanged);
 
 tabs.workItems.addEventListener("click", () => setActiveTab("workItems"));
 tabs.pullRequests.addEventListener("click", () => setActiveTab("pullRequests"));
@@ -876,6 +1000,10 @@ const DASHBOARDS = {
     title: "Klir Trend by Heringer",
     view: document.getElementById("dashboard-trend"),
   },
+  repos: {
+    title: "Klir Repos by Heringer",
+    view: document.getElementById("dashboard-repos"),
+  },
 };
 
 const navLinks = document.querySelectorAll(".nav-link[data-dashboard]");
@@ -906,7 +1034,8 @@ function showDashboard(id) {
   else if (dashboardId === "trend") {
     if (lastTrend) renderTrend(lastTrend);
     reloadTrendMetrics();
-  } else reloadDevMetrics();
+  } else if (dashboardId === "repos") reloadRepos();
+  else reloadDevMetrics();
 }
 
 for (const link of navLinks) {
@@ -925,6 +1054,7 @@ attachRangePresetMenus({
   devMetricsClearBtn: clearFiltersBtn,
   comparisonClearBtn: cmpClearFiltersBtn,
   trendClearBtn: trendClearFiltersBtn,
+  reposClearBtn: reposClearFiltersBtn,
   onDevMetricsRange: ({ start, end }) => {
     startDateInput.value = start;
     endDateInput.value = end;
@@ -941,6 +1071,11 @@ attachRangePresetMenus({
     trendStartDateInput.value = start;
     trendEndDateInput.value = end;
     onTrendFiltersChanged();
+  },
+  onReposRange: ({ start, end }) => {
+    reposStartDateInput.value = start;
+    reposEndDateInput.value = end;
+    onReposFiltersChanged();
   },
 });
 

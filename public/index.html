@@ -20,6 +20,9 @@
           <button type="button" class="nav-link" data-dashboard="trend">
             Trend
           </button>
+          <button type="button" class="nav-link" data-dashboard="repos">
+            Repos
+          </button>
         </nav>
       </aside>
 
@@ -412,7 +415,7 @@
           <article class="metric">
             <h2>1st derivative</h2>
             <p id="trendFirstDerivative" class="value">—</p>
-            <p class="metric-hint">Average daily change of the curve</p>
+            <p class="metric-hint">Average daily change of the curve (speed)</p>
           </article>
           <article class="metric">
             <h2>2nd derivative</h2>
@@ -423,6 +426,59 @@
       </section>
 
       <p id="trendError" class="error hidden"></p>
+    </section>
+
+    <section id="dashboard-repos" class="page dashboard-view hidden">
+      <header class="header">
+        <div>
+          <p class="eyebrow">Klir / Heringer</p>
+          <h1>Repos</h1>
+          <p id="reposStatus" class="status">Loading…</p>
+        </div>
+        <button id="reposRefreshBtn" type="button" class="refresh-btn">
+          Refresh data
+        </button>
+      </header>
+
+      <section class="filters" aria-label="Date filters">
+        <label class="filter-field">
+          <span>Start date</span>
+          <input id="reposStartDate" type="date" />
+        </label>
+        <label class="filter-field">
+          <span>End date</span>
+          <input id="reposEndDate" type="date" />
+        </label>
+        <button id="reposClearFiltersBtn" type="button" class="secondary-btn">
+          Clear dates
+        </button>
+      </section>
+
+      <section id="reposEmptyState" class="empty hidden">
+        <p>No local data yet. Click <strong>Refresh data</strong> to load from Azure DevOps and SonarCloud.</p>
+      </section>
+
+      <section id="reposTableCard" class="chart-card repos-table-card hidden">
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Repository</th>
+                <th class="num">Pull requests</th>
+                <th class="num">Lines of code</th>
+                <th class="num">Coverage</th>
+              </tr>
+            </thead>
+            <tbody id="reposBody">
+              <tr>
+                <td colspan="4" class="table-empty">Loading…</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <p id="reposError" class="error hidden"></p>
     </section>
       </main>
     </div>
