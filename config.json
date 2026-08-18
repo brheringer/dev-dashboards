@@ -2,8 +2,8 @@
   "azureDevOps": {
     "organization": "Klir",
     "project": "klir",
-    "repositories": ["Klir", "KlirCustomerPortal"],
-    "futureRepositories": ["KlirAngularLibraries", "KlirDataCollector", "KlirMobileApp", "KlirSmartCapture", "KlirMonitoringCalculations", "KlirDataAPI", "KlirCypressTests"]
+    "repositories": ["Klir", "KlirCustomerPortal", "KlirAngularLibraries", "KlirDataCollector", "KlirMobileApp", "KlirSmartCapture", "KlirMonitoringCalculations", "KlirDataAPI"],
+    "futureRepositories": ["KlirCypressTests"]
   },
   "sonarCloud": {
     "organization": "klir",
