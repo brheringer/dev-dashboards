@@ -1,0 +1,168 @@
+    <section id="dashboard-comparison" class="page dashboard-view">
+      <header class="header">
+        <div>
+          <p class="eyebrow" data-brand-mark>{{branding.author}} / {{branding.product}}</p>
+          <h1>Comparison</h1>
+          <p id="cmpStatus" class="status">Loading…</p>
+        </div>
+        <button id="cmpRefreshBtn" type="button" class="refresh-btn">
+          Refresh data
+        </button>
+      </header>
+
+      <section class="filters" aria-label="Comparison date filters">
+        <label class="filter-field">
+          <span>Start date</span>
+          <input id="cmpStartDate" type="date" />
+        </label>
+        <label class="filter-field">
+          <span>End date</span>
+          <input id="cmpEndDate" type="date" />
+        </label>
+        <label class="filter-field">
+          <span>Start date 2</span>
+          <input id="cmpStartDate2" type="date" />
+        </label>
+        <label class="filter-field">
+          <span>End date 2</span>
+          <input id="cmpEndDate2" type="date" />
+        </label>
+        <button id="cmpClearFiltersBtn" type="button" class="secondary-btn">
+          Clear dates
+        </button>
+      </section>
+
+      <section id="cmpEmptyState" class="empty hidden">
+        <p>No local data yet. Click <strong>Refresh data</strong> to load from Azure DevOps and SonarCloud.</p>
+      </section>
+
+      <section id="cmpMetricsGrid" class="metrics compare-metrics hidden">
+        <div class="compare-head">
+          <p>Period 1</p>
+          <span></span>
+          <p>Period 2</p>
+        </div>
+        <div class="metrics-row metrics-row-compare">
+          <article class="metric">
+            <h2>Story Points</h2>
+            <p id="cmp1-storyPoints" class="value">—</p>
+          </article>
+          <div class="compare-variance" id="cmpVar-storyPoints">
+            <span class="compare-arrow" aria-hidden="true">→</span>
+            <span class="compare-variance-value">—</span>
+          </div>
+          <article class="metric">
+            <h2>Story Points</h2>
+            <p id="cmp2-storyPoints" class="value">—</p>
+          </article>
+        </div>
+        <div class="metrics-row metrics-row-compare">
+          <article class="metric">
+            <h2>User Stories</h2>
+            <p id="cmp1-userStories" class="value">—</p>
+          </article>
+          <div class="compare-variance" id="cmpVar-userStories">
+            <span class="compare-arrow" aria-hidden="true">→</span>
+            <span class="compare-variance-value">—</span>
+          </div>
+          <article class="metric">
+            <h2>User Stories</h2>
+            <p id="cmp2-userStories" class="value">—</p>
+          </article>
+        </div>
+        <div class="metrics-row metrics-row-compare">
+          <article class="metric">
+            <h2>Tech Debts</h2>
+            <p id="cmp1-techDebts" class="value">—</p>
+          </article>
+          <div class="compare-variance" id="cmpVar-techDebts">
+            <span class="compare-arrow" aria-hidden="true">→</span>
+            <span class="compare-variance-value">—</span>
+          </div>
+          <article class="metric">
+            <h2>Tech Debts</h2>
+            <p id="cmp2-techDebts" class="value">—</p>
+          </article>
+        </div>
+        <div class="metrics-row metrics-row-compare">
+          <article class="metric">
+            <h2>Sprint Bugs</h2>
+            <p id="cmp1-sprintBugs" class="value">—</p>
+          </article>
+          <div class="compare-variance" id="cmpVar-sprintBugs">
+            <span class="compare-arrow" aria-hidden="true">→</span>
+            <span class="compare-variance-value">—</span>
+          </div>
+          <article class="metric">
+            <h2>Sprint Bugs</h2>
+            <p id="cmp2-sprintBugs" class="value">—</p>
+          </article>
+        </div>
+        <div class="metrics-row metrics-row-compare">
+          <article class="metric">
+            <h2>US Bugs</h2>
+            <p id="cmp1-usBugs" class="value">—</p>
+          </article>
+          <div class="compare-variance" id="cmpVar-usBugs">
+            <span class="compare-arrow" aria-hidden="true">→</span>
+            <span class="compare-variance-value">—</span>
+          </div>
+          <article class="metric">
+            <h2>US Bugs</h2>
+            <p id="cmp2-usBugs" class="value">—</p>
+          </article>
+        </div>
+        <div class="metrics-row metrics-row-compare">
+          <article class="metric">
+            <h2>Pull Requests</h2>
+            <p id="cmp1-pullRequests" class="value">—</p>
+          </article>
+          <div class="compare-variance" id="cmpVar-pullRequests">
+            <span class="compare-arrow" aria-hidden="true">→</span>
+            <span class="compare-variance-value">—</span>
+          </div>
+          <article class="metric">
+            <h2>Pull Requests</h2>
+            <p id="cmp2-pullRequests" class="value">—</p>
+          </article>
+        </div>
+        <div class="metrics-row metrics-row-compare">
+          <article class="metric">
+            <h2>Lines of Code</h2>
+            <p id="cmp1-linesOfCode" class="value">—</p>
+            <p id="cmp1-linesOfCodeDelta" class="delta"></p>
+            <p id="cmp1-linesOfCodeHint" class="metric-hint"></p>
+          </article>
+          <div class="compare-variance" id="cmpVar-linesOfCode">
+            <span class="compare-arrow" aria-hidden="true">→</span>
+            <span class="compare-variance-value">—</span>
+          </div>
+          <article class="metric">
+            <h2>Lines of Code</h2>
+            <p id="cmp2-linesOfCode" class="value">—</p>
+            <p id="cmp2-linesOfCodeDelta" class="delta"></p>
+            <p id="cmp2-linesOfCodeHint" class="metric-hint"></p>
+          </article>
+        </div>
+        <div class="metrics-row metrics-row-compare">
+          <article class="metric">
+            <h2>Coverage</h2>
+            <p id="cmp1-coverage" class="value">—</p>
+            <p id="cmp1-coverageDelta" class="delta"></p>
+            <p id="cmp1-coverageHint" class="metric-hint"></p>
+          </article>
+          <div class="compare-variance" id="cmpVar-coverage">
+            <span class="compare-arrow" aria-hidden="true">→</span>
+            <span class="compare-variance-value">—</span>
+          </div>
+          <article class="metric">
+            <h2>Coverage</h2>
+            <p id="cmp2-coverage" class="value">—</p>
+            <p id="cmp2-coverageDelta" class="delta"></p>
+            <p id="cmp2-coverageHint" class="metric-hint"></p>
+          </article>
+        </div>
+      </section>
+
+      <p id="cmpError" class="error hidden"></p>
+    </section>

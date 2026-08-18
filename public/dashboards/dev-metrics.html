@@ -1,0 +1,179 @@
+    <section id="dashboard-dev-metrics" class="page dashboard-view">
+      <header class="header">
+        <div>
+          <p class="eyebrow" data-brand-mark>{{branding.author}} / {{branding.product}}</p>
+          <h1>Dev Metrics</h1>
+          <p id="status" class="status">Loading…</p>
+        </div>
+        <button id="refreshBtn" type="button" class="refresh-btn">
+          Refresh data
+        </button>
+      </header>
+
+      <section class="filters" aria-label="Date filters">
+        <label class="filter-field">
+          <span>Start date</span>
+          <input id="startDate" type="date" />
+        </label>
+        <label class="filter-field">
+          <span>End date</span>
+          <input id="endDate" type="date" />
+        </label>
+        <button id="clearFiltersBtn" type="button" class="secondary-btn">
+          Clear dates
+        </button>
+      </section>
+
+      <section id="emptyState" class="empty hidden">
+        <p>No local data yet. Click <strong>Refresh data</strong> to load from Azure DevOps and SonarCloud.</p>
+      </section>
+
+      <section id="metricsGrid" class="metrics hidden">
+        <div class="metrics-row metrics-row-6">
+          <article class="metric">
+            <h2>Story Points</h2>
+            <p id="storyPoints" class="value">—</p>
+          </article>
+          <article class="metric">
+            <h2>User Stories</h2>
+            <p id="userStories" class="value">—</p>
+          </article>
+          <article class="metric">
+            <h2>Tech Debts</h2>
+            <p id="techDebts" class="value">—</p>
+          </article>
+          <article class="metric">
+            <h2>Sprint Bugs</h2>
+            <p id="sprintBugs" class="value">—</p>
+          </article>
+          <article class="metric">
+            <h2>US Bugs</h2>
+            <p id="usBugs" class="value">—</p>
+          </article>
+          <article class="metric">
+            <h2>Pull Requests</h2>
+            <p id="pullRequests" class="value">—</p>
+          </article>
+        </div>
+        <div class="metrics-row metrics-row-2">
+          <article class="metric">
+            <h2>Lines of Code</h2>
+            <p id="linesOfCode" class="value">—</p>
+            <p id="linesOfCodeDelta" class="delta"></p>
+            <p id="linesOfCodeHint" class="metric-hint"></p>
+          </article>
+          <article class="metric">
+            <h2>Coverage</h2>
+            <p id="coverage" class="value">—</p>
+            <p id="coverageDelta" class="delta"></p>
+            <p id="coverageHint" class="metric-hint"></p>
+          </article>
+        </div>
+      </section>
+
+      <p id="error" class="error hidden"></p>
+
+      <details id="dataAccordion" class="data-accordion">
+        <summary>Underlying data</summary>
+        <div class="accordion-body">
+          <div class="tabs" role="tablist" aria-label="Data tables">
+            <button
+              id="tabWorkItems"
+              type="button"
+              class="tab active"
+              role="tab"
+              aria-selected="true"
+              aria-controls="panelWorkItems"
+            >
+              Work Items
+            </button>
+            <button
+              id="tabPullRequests"
+              type="button"
+              class="tab"
+              role="tab"
+              aria-selected="false"
+              aria-controls="panelPullRequests"
+            >
+              Pull Requests
+            </button>
+          </div>
+
+          <div id="panelWorkItems" class="tab-panel" role="tabpanel">
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Id</th>
+                    <th>Type</th>
+                    <th>Closed Date</th>
+                    <th>Story Points</th>
+                    <th>Tags</th>
+                    <th>Area Path</th>
+                    <th>Iteration Path</th>
+                  </tr>
+                </thead>
+                <tbody id="workItemsBody">
+                  <tr>
+                    <td colspan="7" class="table-empty">Open the accordion to load rows.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="pager" data-table="workItems">
+              <label>
+                Rows per page
+                <select id="workItemsPageSize">
+                  <option value="10" selected>10</option>
+                  <option value="25">25</option>
+                  <option value="50">50</option>
+                  <option value="100">100</option>
+                  <option value="500">500</option>
+                </select>
+              </label>
+              <p id="workItemsPageInfo" class="page-info">—</p>
+              <div class="pager-actions">
+                <button id="workItemsPrev" type="button" class="secondary-btn" disabled>Previous</button>
+                <button id="workItemsNext" type="button" class="secondary-btn" disabled>Next</button>
+              </div>
+            </div>
+          </div>
+
+          <div id="panelPullRequests" class="tab-panel hidden" role="tabpanel" hidden>
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Id</th>
+                    <th>Creation Date</th>
+                    <th>Repository</th>
+                  </tr>
+                </thead>
+                <tbody id="pullRequestsBody">
+                  <tr>
+                    <td colspan="3" class="table-empty">Open the accordion to load rows.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="pager" data-table="pullRequests">
+              <label>
+                Rows per page
+                <select id="pullRequestsPageSize">
+                  <option value="10" selected>10</option>
+                  <option value="25">25</option>
+                  <option value="50">50</option>
+                  <option value="100">100</option>
+                  <option value="500">500</option>
+                </select>
+              </label>
+              <p id="pullRequestsPageInfo" class="page-info">—</p>
+              <div class="pager-actions">
+                <button id="pullRequestsPrev" type="button" class="secondary-btn" disabled>Previous</button>
+                <button id="pullRequestsNext" type="button" class="secondary-btn" disabled>Next</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </details>
+    </section>

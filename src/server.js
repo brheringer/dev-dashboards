@@ -15,7 +15,26 @@ import { fetchSonarMeasures } from "./sources/sonarCloud.js";
 const app = express();
 let refreshInProgress = false;
 const publicDir = path.join(rootDirPath, "public");
-const indexPath = path.join(publicDir, "index.html");
+const layoutPath = path.join(publicDir, "layout.html");
+const dashboardsDir = path.join(publicDir, "dashboards");
+
+const DASHBOARDS = {
+  "dev-metrics": { name: "Dev Metrics" },
+  comparison: { name: "Comparison" },
+  trend: { name: "Trend" },
+  "work-items": { name: "Work Items" },
+  repos: { name: "Repos" },
+};
+
+const PATH_TO_DASHBOARD = {
+  "/": "dev-metrics",
+  "/index.html": "dev-metrics",
+  "/dev-metrics": "dev-metrics",
+  "/comparison": "comparison",
+  "/trend": "trend",
+  "/work-items": "work-items",
+  "/repos": "repos",
+};
 
 app.use(express.json());
 
@@ -28,17 +47,37 @@ function escapeHtml(value) {
     .replaceAll("'", "&#39;");
 }
 
-function renderIndexHtml() {
-  const template = fs.readFileSync(indexPath, "utf8");
+function renderDashboardHtml(dashboardId) {
+  const layout = fs.readFileSync(layoutPath, "utf8");
+  const fragment = fs.readFileSync(path.join(dashboardsDir, `${dashboardId}.html`), "utf8");
   const { author, product } = config.branding;
-  return template
+  const name = DASHBOARDS[dashboardId].name;
+  let html = layout
+    .replaceAll("{{dashboard}}", fragment)
+    .replaceAll("{{dashboardId}}", dashboardId)
+    .replaceAll("{{dashboardName}}", escapeHtml(name))
     .replaceAll("{{branding.json}}", JSON.stringify({ author, product }).replaceAll("<", "\\u003c"))
     .replaceAll("{{branding.author}}", escapeHtml(author))
     .replaceAll("{{branding.product}}", escapeHtml(product));
+
+  for (const id of Object.keys(DASHBOARDS)) {
+    html = html.replaceAll(`{{navClass.${id}}}`, id === dashboardId ? " active" : "");
+  }
+  return html;
 }
 
-app.get(["/", "/index.html"], (_req, res) => {
-  res.type("html").send(renderIndexHtml());
+app.get(Object.keys(PATH_TO_DASHBOARD), (req, res) => {
+  const dashboardId = PATH_TO_DASHBOARD[req.path] || "dev-metrics";
+  res.type("html").send(renderDashboardHtml(dashboardId));
+});
+
+app.get(["/layout.html", "/dashboards/:page"], (req, res) => {
+  const id = String(req.params.page || "").replace(/\.html$/, "");
+  if (DASHBOARDS[id]) {
+    res.redirect(id === "dev-metrics" ? "/" : `/${id}`);
+    return;
+  }
+  res.redirect("/");
 });
 
 app.use(express.static(publicDir, { index: false }));

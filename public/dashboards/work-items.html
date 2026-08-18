@@ -1,0 +1,102 @@
+    <section id="dashboard-work-items" class="page dashboard-view">
+      <header class="header">
+        <div>
+          <p class="eyebrow" data-brand-mark>{{branding.author}} / {{branding.product}}</p>
+          <h1>Work Items</h1>
+          <p id="wiStatus" class="status">Loading…</p>
+        </div>
+        <button id="wiRefreshBtn" type="button" class="refresh-btn">
+          Refresh data
+        </button>
+      </header>
+
+      <section class="filters" aria-label="Date filters">
+        <label class="filter-field">
+          <span>Start date</span>
+          <input id="wiStartDate" type="date" />
+        </label>
+        <label class="filter-field">
+          <span>End date</span>
+          <input id="wiEndDate" type="date" />
+        </label>
+        <button id="wiClearFiltersBtn" type="button" class="secondary-btn">
+          Clear dates
+        </button>
+      </section>
+
+      <section id="wiEmptyState" class="empty hidden">
+        <p>No local data yet. Click <strong>Refresh data</strong> to load from Azure DevOps and SonarCloud.</p>
+      </section>
+
+      <section id="wiResults" class="wi-results hidden">
+        <div class="tabs" role="tablist" aria-label="Work item charts">
+          <button
+            id="wiTabTotal"
+            type="button"
+            class="tab active"
+            role="tab"
+            aria-selected="true"
+            aria-controls="wiPanelTotal"
+          >
+            Total
+          </button>
+          <button
+            id="wiTabAccDaily"
+            type="button"
+            class="tab"
+            role="tab"
+            aria-selected="false"
+            aria-controls="wiPanelAccDaily"
+          >
+            Acc. Daily
+          </button>
+          <button
+            id="wiTabAccStacked"
+            type="button"
+            class="tab"
+            role="tab"
+            aria-selected="false"
+            aria-controls="wiPanelAccStacked"
+          >
+            Acc. Daily stacked
+          </button>
+        </div>
+
+        <div id="wiPanelTotal" class="tab-panel" role="tabpanel">
+          <div class="charts-grid charts-grid-2">
+            <section class="chart-card">
+              <div class="chart-card-head">
+                <h2>Share by type</h2>
+              </div>
+              <div id="wiPieChart" class="wi-chart" aria-label="Work items pie chart"></div>
+            </section>
+            <section class="chart-card">
+              <div class="chart-card-head">
+                <h2>Count by type</h2>
+              </div>
+              <div id="wiColumnChart" class="wi-chart" aria-label="Work items column chart"></div>
+            </section>
+          </div>
+        </div>
+
+        <div id="wiPanelAccDaily" class="tab-panel hidden" role="tabpanel" hidden>
+          <section class="chart-card">
+            <div class="chart-card-head">
+              <h2>Accumulated count by day</h2>
+            </div>
+            <div id="wiLineChart" class="wi-chart wi-chart-wide" aria-label="Accumulated work items line chart"></div>
+          </section>
+        </div>
+
+        <div id="wiPanelAccStacked" class="tab-panel hidden" role="tabpanel" hidden>
+          <section class="chart-card">
+            <div class="chart-card-head">
+              <h2>Accumulated count by day</h2>
+            </div>
+            <div id="wiStackedChart" class="wi-chart wi-chart-wide" aria-label="Accumulated work items stacked column chart"></div>
+          </section>
+        </div>
+      </section>
+
+      <p id="wiError" class="error hidden"></p>
+    </section>

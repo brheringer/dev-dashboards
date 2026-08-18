@@ -86,6 +86,7 @@ function attachDatePresetMenu(input) {
 }
 
 function attachRangePresetMenu(clearButton, presets, onPick) {
+  if (!clearButton || typeof onPick !== "function") return;
   if (clearButton.closest(".date-preset")) return;
 
   const wrap = document.createElement("div");
@@ -119,10 +120,10 @@ export function attachRangePresetMenus({
   onWorkItemsRange,
 }) {
   attachRangePresetMenu(devMetricsClearBtn, DEV_METRICS_RANGE_PRESETS, (id) => {
-    onDevMetricsRange(resolveDevMetricsRange(id));
+    onDevMetricsRange?.(resolveDevMetricsRange(id));
   });
   attachRangePresetMenu(comparisonClearBtn, COMPARISON_RANGE_PRESETS, (id) => {
-    onComparisonRange(resolveComparisonRange(id));
+    onComparisonRange?.(resolveComparisonRange(id));
   });
   if (trendClearBtn && onTrendRange) {
     attachRangePresetMenu(trendClearBtn, DEV_METRICS_RANGE_PRESETS, (id) => {

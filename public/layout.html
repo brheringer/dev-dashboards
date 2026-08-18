@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{{branding.product}} {{dashboardName}} by {{branding.author}}</title>
+    <script type="application/json" id="branding-config">{{branding.json}}</script>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body data-dashboard="{{dashboardId}}">
+    <div class="app-shell">
+      <aside class="sidebar">
+        <p class="sidebar-brand" data-brand-mark>{{branding.author}} / {{branding.product}}</p>
+        <nav class="sidebar-nav" aria-label="Dashboards">
+          <a class="nav-link{{navClass.dev-metrics}}" href="/" data-dashboard="dev-metrics">
+            Dev Metrics
+          </a>
+          <a class="nav-link{{navClass.comparison}}" href="/comparison" data-dashboard="comparison">
+            Comparison
+          </a>
+          <a class="nav-link{{navClass.trend}}" href="/trend" data-dashboard="trend">
+            Trend
+          </a>
+          <a class="nav-link{{navClass.work-items}}" href="/work-items" data-dashboard="work-items">
+            Work Items
+          </a>
+          <a class="nav-link{{navClass.repos}}" href="/repos" data-dashboard="repos">
+            Repos
+          </a>
+        </nav>
+      </aside>
+
+      <main class="main">
+        {{dashboard}}
+      </main>
+    </div>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>
