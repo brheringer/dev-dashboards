@@ -238,65 +238,90 @@
       <section id="cmpMetricsGrid" class="metrics compare-metrics hidden">
         <div class="compare-head">
           <p>Period 1</p>
+          <span></span>
           <p>Period 2</p>
         </div>
-        <div class="metrics-row metrics-row-2">
+        <div class="metrics-row metrics-row-compare">
           <article class="metric">
             <h2>Story Points</h2>
             <p id="cmp1-storyPoints" class="value">—</p>
           </article>
+          <div class="compare-variance" id="cmpVar-storyPoints">
+            <span class="compare-arrow" aria-hidden="true">→</span>
+            <span class="compare-variance-value">—</span>
+          </div>
           <article class="metric">
             <h2>Story Points</h2>
             <p id="cmp2-storyPoints" class="value">—</p>
           </article>
         </div>
-        <div class="metrics-row metrics-row-2">
+        <div class="metrics-row metrics-row-compare">
           <article class="metric">
             <h2>User Stories</h2>
             <p id="cmp1-userStories" class="value">—</p>
           </article>
+          <div class="compare-variance" id="cmpVar-userStories">
+            <span class="compare-arrow" aria-hidden="true">→</span>
+            <span class="compare-variance-value">—</span>
+          </div>
           <article class="metric">
             <h2>User Stories</h2>
             <p id="cmp2-userStories" class="value">—</p>
           </article>
         </div>
-        <div class="metrics-row metrics-row-2">
+        <div class="metrics-row metrics-row-compare">
           <article class="metric">
             <h2>Tech Debts</h2>
             <p id="cmp1-techDebts" class="value">—</p>
           </article>
+          <div class="compare-variance" id="cmpVar-techDebts">
+            <span class="compare-arrow" aria-hidden="true">→</span>
+            <span class="compare-variance-value">—</span>
+          </div>
           <article class="metric">
             <h2>Tech Debts</h2>
             <p id="cmp2-techDebts" class="value">—</p>
           </article>
         </div>
-        <div class="metrics-row metrics-row-2">
+        <div class="metrics-row metrics-row-compare">
           <article class="metric">
             <h2>Bugs</h2>
             <p id="cmp1-bugs" class="value">—</p>
           </article>
+          <div class="compare-variance" id="cmpVar-bugs">
+            <span class="compare-arrow" aria-hidden="true">→</span>
+            <span class="compare-variance-value">—</span>
+          </div>
           <article class="metric">
             <h2>Bugs</h2>
             <p id="cmp2-bugs" class="value">—</p>
           </article>
         </div>
-        <div class="metrics-row metrics-row-2">
+        <div class="metrics-row metrics-row-compare">
           <article class="metric">
             <h2>Pull Requests</h2>
             <p id="cmp1-pullRequests" class="value">—</p>
           </article>
+          <div class="compare-variance" id="cmpVar-pullRequests">
+            <span class="compare-arrow" aria-hidden="true">→</span>
+            <span class="compare-variance-value">—</span>
+          </div>
           <article class="metric">
             <h2>Pull Requests</h2>
             <p id="cmp2-pullRequests" class="value">—</p>
           </article>
         </div>
-        <div class="metrics-row metrics-row-2">
+        <div class="metrics-row metrics-row-compare">
           <article class="metric">
             <h2>Lines of Code</h2>
             <p id="cmp1-linesOfCode" class="value">—</p>
             <p id="cmp1-linesOfCodeDelta" class="delta"></p>
             <p id="cmp1-linesOfCodeHint" class="metric-hint"></p>
           </article>
+          <div class="compare-variance" id="cmpVar-linesOfCode">
+            <span class="compare-arrow" aria-hidden="true">→</span>
+            <span class="compare-variance-value">—</span>
+          </div>
           <article class="metric">
             <h2>Lines of Code</h2>
             <p id="cmp2-linesOfCode" class="value">—</p>
@@ -304,13 +329,17 @@
             <p id="cmp2-linesOfCodeHint" class="metric-hint"></p>
           </article>
         </div>
-        <div class="metrics-row metrics-row-2">
+        <div class="metrics-row metrics-row-compare">
           <article class="metric">
             <h2>Coverage</h2>
             <p id="cmp1-coverage" class="value">—</p>
             <p id="cmp1-coverageDelta" class="delta"></p>
             <p id="cmp1-coverageHint" class="metric-hint"></p>
           </article>
+          <div class="compare-variance" id="cmpVar-coverage">
+            <span class="compare-arrow" aria-hidden="true">→</span>
+            <span class="compare-variance-value">—</span>
+          </div>
           <article class="metric">
             <h2>Coverage</h2>
             <p id="cmp2-coverage" class="value">—</p>
@@ -324,6 +353,6 @@
     </section>
       </main>
     </div>
-    <script src="/app.js"></script>
+    <script type="module" src="/app.js"></script>
   </body>
 </html>

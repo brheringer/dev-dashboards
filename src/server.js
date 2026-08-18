@@ -81,6 +81,10 @@ app.post("/api/refresh", async (req, res) => {
       sonar,
     };
 
+    if (!Array.isArray(workItems) || !Array.isArray(pullRequests) || !Array.isArray(sonar)) {
+      throw new Error("Refresh returned incomplete data. Previous cache was kept.");
+    }
+
     writeCache(cache);
 
     const filters = readDateFilters(req);

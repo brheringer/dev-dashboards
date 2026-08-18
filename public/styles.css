@@ -154,7 +154,7 @@ h1 {
 .filters {
   display: flex;
   flex-wrap: wrap;
-  align-items: end;
+  align-items: start;
   gap: 0.85rem 1rem;
   margin-bottom: 1.5rem;
   padding: 1rem 1.1rem;
@@ -162,6 +162,18 @@ h1 {
   border: 1px solid var(--border);
   border-radius: 16px;
   box-shadow: var(--shadow);
+  overflow: visible;
+}
+
+.filters > .filter-actions {
+  margin-top: 1.35rem;
+}
+
+.filter-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
 }
 
 .filter-field {
@@ -190,6 +202,74 @@ h1 {
 .filter-field input[type="date"]:focus {
   outline: 2px solid rgba(61, 186, 122, 0.45);
   outline-offset: 1px;
+}
+
+.date-preset {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.date-preset-toggle {
+  align-self: flex-start;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0;
+  cursor: pointer;
+}
+
+.date-preset-toggle::after {
+  content: " ▾";
+}
+
+.date-preset.open .date-preset-toggle::after {
+  content: " ▴";
+}
+
+.date-preset-toggle:hover {
+  color: var(--accent);
+}
+
+.date-preset-menu {
+  display: none;
+  position: absolute;
+  top: calc(100% + 0.2rem);
+  left: 0;
+  z-index: 40;
+  min-width: 240px;
+  max-height: 280px;
+  overflow-y: auto;
+  padding: 0.35rem;
+  background: #1c2420;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+}
+
+.date-preset.open .date-preset-menu {
+  display: flex;
+  flex-direction: column;
+}
+
+.date-preset-item {
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.85rem;
+  text-align: left;
+  padding: 0.45rem 0.6rem;
+  cursor: pointer;
+}
+
+.date-preset-item:hover {
+  background: rgba(61, 186, 122, 0.14);
 }
 
 .secondary-btn {
@@ -228,9 +308,14 @@ h1 {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.metrics-row-compare {
+  grid-template-columns: minmax(0, 1fr) 4.75rem minmax(0, 1fr);
+  align-items: center;
+}
+
 .compare-head {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr) 4.75rem minmax(0, 1fr);
   gap: 1rem;
 }
 
@@ -242,6 +327,37 @@ h1 {
   text-transform: uppercase;
   color: var(--muted);
   padding: 0 0.2rem;
+}
+
+.compare-variance {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  color: var(--muted);
+}
+
+.compare-arrow {
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.compare-variance-value {
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.compare-variance.up {
+  color: #3dba7a;
+}
+
+.compare-variance.down {
+  color: #f07070;
+}
+
+.compare-variance.flat {
+  color: var(--muted);
 }
 
 .metric {

@@ -1,3 +1,6 @@
+import { attachDatePresetMenus, attachRangePresetMenus } from "./datePresetMenu.js";
+import { savePageDates, loadPageDates } from "./dateStorage.js";
+
 const refreshBtn = document.getElementById("refreshBtn");
 const clearFiltersBtn = document.getElementById("clearFiltersBtn");
 const startDateInput = document.getElementById("startDate");
@@ -99,8 +102,22 @@ const comparisonSets = {
   period2: metricSet("cmp2"),
 };
 
-let latestComparisonRequestId = 0;
+const PAGE_DATE_INPUTS = {
+  "dev-metrics": [startDateInput, endDateInput],
+  comparison: [cmpStartDateInput, cmpEndDateInput, cmpStartDate2Input, cmpEndDate2Input],
+};
+
+function persistPageDates(pageId) {
+  savePageDates(pageId, PAGE_DATE_INPUTS[pageId] || []);
+}
+
+function restorePageDates(pageId) {
+  return loadPageDates(pageId, PAGE_DATE_INPUTS[pageId] || []);
+}
+
+let datesReady = false;
 let latestRequestId = 0;
+let latestComparisonRequestId = 0;
 let activeTab = "workItems";
 
 function formatNumber(value) {
@@ -241,6 +258,38 @@ function fillMetricSet(set, metrics) {
   set.coverageHint.textContent = `${asOfLabel}${baselineLabel}`;
 }
 
+function percentVariance(from, to) {
+  if (!Number.isFinite(from) || !Number.isFinite(to)) return null;
+  if (from === 0 && to === 0) return 0;
+  if (from === 0) return null;
+  return Math.round(((to - from) / Math.abs(from)) * 1000) / 10;
+}
+
+function setVariance(el, from, to) {
+  el.classList.remove("up", "down", "flat");
+  const valueEl = el.querySelector(".compare-variance-value");
+  const variance = percentVariance(from, to);
+  if (variance === null) {
+    valueEl.textContent = "—";
+    return;
+  }
+
+  valueEl.textContent = `${formatSignedNumber(variance)}%`;
+  if (variance > 0) el.classList.add("up");
+  else if (variance < 0) el.classList.add("down");
+  else el.classList.add("flat");
+}
+
+const COMPARISON_VARIANCE_KEYS = [
+  "storyPoints",
+  "userStories",
+  "techDebts",
+  "bugs",
+  "pullRequests",
+  "linesOfCode",
+  "coverage",
+];
+
 function rangeLabel(metrics) {
   const rangeParts = [];
   if (metrics.startDate) rangeParts.push(`from ${metrics.startDate}`);
@@ -304,6 +353,16 @@ function renderComparison(period1, period2) {
   cmpMetricsGrid.classList.remove("hidden");
   fillMetricSet(comparisonSets.period1, period1);
   fillMetricSet(comparisonSets.period2, period2);
+
+  for (const key of COMPARISON_VARIANCE_KEYS) {
+    const from = period1[key];
+    const to = period2[key];
+    setVariance(
+      document.getElementById(`cmpVar-${key}`),
+      from === null || from === undefined ? NaN : Number(from),
+      to === null || to === undefined ? NaN : Number(to)
+    );
+  }
 
   const fetchedAt = period1.fetchedAt || period2.fetchedAt;
   cmpStatusEl.textContent = `Last refreshed: ${formatDateTime(fetchedAt)} · Period 1 ${rangeLabel(period1)} · Period 2 ${rangeLabel(period2)}`;
@@ -474,12 +533,14 @@ async function refreshData() {
   setRefreshing(true);
   setError("");
   setCmpError("");
+  const previousStatus = statusEl.textContent;
+  const previousCmpStatus = cmpStatusEl.textContent;
   statusEl.textContent = "Refreshing from Azure DevOps and SonarCloud…";
   cmpStatusEl.textContent = "Refreshing from Azure DevOps and SonarCloud…";
 
   try {
     const response = await fetch(`/api/refresh${buildQuery()}`, { method: "POST" });
-    const data = await response.json();
+    const data = await response.json().catch(() => ({}));
     if (!response.ok) {
       throw new Error(data.error || "Refresh failed.");
     }
@@ -491,19 +552,33 @@ async function refreshData() {
     const message = error instanceof Error ? error.message : "Refresh failed.";
     setError(message);
     setCmpError(message);
+    statusEl.textContent = previousStatus;
+    cmpStatusEl.textContent = previousCmpStatus;
+    metricsGrid.classList.remove("is-stale");
+    cmpMetricsGrid.classList.remove("is-stale");
   } finally {
     setRefreshing(false);
   }
 }
 
 function onFiltersChanged() {
+  persistPageDates("dev-metrics");
+  reloadDevMetrics();
+}
+
+function onComparisonFiltersChanged() {
+  persistPageDates("comparison");
+  reloadComparisonMetrics();
+}
+
+function reloadDevMetrics() {
   applyFilters().catch((error) => {
     metricsGrid.classList.remove("is-stale");
     setError(error instanceof Error ? error.message : "Failed to apply filters.");
   });
 }
 
-function onComparisonFiltersChanged() {
+function reloadComparisonMetrics() {
   applyComparisonFilters().catch((error) => {
     cmpMetricsGrid.classList.remove("is-stale");
     setCmpError(error instanceof Error ? error.message : "Failed to apply filters.");
@@ -547,6 +622,9 @@ async function init() {
     // Fall through: filters simply start empty.
   }
 
+  restorePageDates("dev-metrics");
+  restorePageDates("comparison");
+  datesReady = true;
   await Promise.all([applyFilters(), applyComparisonFilters()]);
 }
 
@@ -627,6 +705,12 @@ function showDashboard(id) {
   if (window.location.hash !== `#${dashboardId}`) {
     window.location.hash = dashboardId;
   }
+
+  if (!datesReady) return;
+
+  restorePageDates(dashboardId);
+  if (dashboardId === "comparison") reloadComparisonMetrics();
+  else reloadDevMetrics();
 }
 
 for (const link of navLinks) {
@@ -640,6 +724,23 @@ window.addEventListener("hashchange", () => {
 });
 
 showDashboard(window.location.hash.replace(/^#/, "") || "dev-metrics");
+attachDatePresetMenus();
+attachRangePresetMenus({
+  devMetricsClearBtn: clearFiltersBtn,
+  comparisonClearBtn: cmpClearFiltersBtn,
+  onDevMetricsRange: ({ start, end }) => {
+    startDateInput.value = start;
+    endDateInput.value = end;
+    onFiltersChanged();
+  },
+  onComparisonRange: ({ start, end, start2, end2 }) => {
+    cmpStartDateInput.value = start;
+    cmpEndDateInput.value = end;
+    cmpStartDate2Input.value = start2;
+    cmpEndDate2Input.value = end2;
+    onComparisonFiltersChanged();
+  },
+});
 
 init().catch((error) => {
   metricsGrid.classList.remove("is-stale");
