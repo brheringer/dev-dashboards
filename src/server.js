@@ -6,7 +6,7 @@ import { readCache, writeCache } from "./cache.js";
 import { computeMetrics } from "./metrics.js";
 import { computeTrend } from "./trend.js";
 import { computeRepoSummaries } from "./repos.js";
-import { computeWorkItems, listAreaPaths, areaPathsFromCache } from "./workItems.js";
+import { computeWorkItems } from "./workItems.js";
 import { getWorkItemsPage, getPullRequestsPage } from "./details.js";
 import { fetchClosedWorkItems } from "./sources/adoWorkItems.js";
 import { fetchPullRequests } from "./sources/adoPullRequests.js";
@@ -113,7 +113,7 @@ app.get("/api/config", (_req, res) => {
     cutDate: cache?.cutDate || config.cutDate,
     fetchedAt: cache?.fetchedAt || null,
     branding: config.branding,
-    areaPaths: areaPathsFromCache(cache),
+    areaPaths: config.azureDevOps.areaPathsOfInterest,
   });
 });
 
@@ -153,7 +153,7 @@ app.get("/api/work-items", (req, res) => {
   const filters = readWorkItemsFilters(req);
   res.json({
     workItems: computeWorkItems(cache, filters),
-    areaPaths: areaPathsFromCache(cache),
+    areaPaths: config.azureDevOps.areaPathsOfInterest,
     refreshing: refreshInProgress,
     cutDate: cache?.cutDate || config.cutDate,
   });
@@ -189,7 +189,6 @@ app.post("/api/refresh", async (req, res) => {
       workItems,
       pullRequests,
       sonar,
-      areaPaths: listAreaPaths(workItems),
     };
 
     if (!Array.isArray(workItems) || !Array.isArray(pullRequests) || !Array.isArray(sonar)) {

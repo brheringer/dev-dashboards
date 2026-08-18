@@ -1,5 +1,6 @@
 import { toBoundDate, isWithinRange } from "./details.js";
 import { aggregateCode, hasSprintBugTag, hasTechDebtTag } from "./metrics.js";
+import { isAreaPathOfInterest } from "./config.js";
 
 export const TREND_METRICS = {
   storyPoints: {
@@ -192,7 +193,7 @@ function codeSeries(projects, days, field) {
 }
 
 function buildTrendPoints(metricId, meta, cache, start, end, days) {
-  const workItems = cache.workItems || [];
+  const workItems = (cache.workItems || []).filter((wi) => isAreaPathOfInterest(wi.areaPath));
   const pullRequests = cache.pullRequests || [];
   const sonar = cache.sonar || [];
 
@@ -329,7 +330,10 @@ function collectBoundHintDates(metricId, meta, cache) {
     return dates;
   }
   if (meta.kind === "cumulative") {
-    for (const wi of cache.workItems || []) dates.push(isoDay(wi.closedDate));
+    for (const wi of cache.workItems || []) {
+      if (!isAreaPathOfInterest(wi.areaPath)) continue;
+      dates.push(isoDay(wi.closedDate));
+    }
     return dates;
   }
   for (const project of cache.sonar || []) {

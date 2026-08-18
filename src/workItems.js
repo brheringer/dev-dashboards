@@ -1,5 +1,6 @@
 import { toBoundDate, isWithinRange } from "./details.js";
 import { hasSprintBugTag, hasTechDebtTag } from "./metrics.js";
+import { isAreaPathOfInterest } from "./config.js";
 
 export const WORK_ITEM_SERIES = [
   { key: "userStories", label: "User Stories" },
@@ -77,25 +78,8 @@ function emptyPayload(filters) {
   };
 }
 
-/**
- * Unique area paths from cached work items, sorted for the filter dropdown.
- * @param {object[]|null|undefined} workItems
- */
-export function listAreaPaths(workItems = []) {
-  const values = new Set();
-  for (const item of workItems) {
-    const areaPath = typeof item?.areaPath === "string" ? item.areaPath.trim() : "";
-    if (areaPath) values.add(areaPath);
-  }
-  return [...values].sort((a, b) => a.localeCompare(b));
-}
-
-export function areaPathsFromCache(cache) {
-  if (Array.isArray(cache?.areaPaths)) return cache.areaPaths;
-  return listAreaPaths(cache?.workItems);
-}
-
 function matchesAreaPath(item, areaPath) {
+  if (!isAreaPathOfInterest(item.areaPath)) return false;
   if (!areaPath) return true;
   return (item.areaPath || "") === areaPath;
 }

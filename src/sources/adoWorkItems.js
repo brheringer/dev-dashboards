@@ -17,6 +17,17 @@ function escapeWiqlString(value) {
   return String(value).replace(/'/g, "''");
 }
 
+function areaPathWiqlClause(areaPaths) {
+  if (!areaPaths.length) return "";
+  const clauses = areaPaths.map(
+    (areaPath) => `[System.AreaPath] = '${escapeWiqlString(areaPath)}'`
+  );
+  if (clauses.length === 1) {
+    return `AND ${clauses[0]}`;
+  }
+  return `AND (\n        ${clauses.join("\n        OR ")}\n      )`;
+}
+
 /**
  * Load closed work items since cutDate.
  * Returns normalized records for the local cache.
@@ -24,6 +35,7 @@ function escapeWiqlString(value) {
 export async function fetchClosedWorkItems() {
   const project = config.azureDevOps.project;
   const cutDate = config.cutDate;
+  const areaPaths = config.azureDevOps.areaPathsOfInterest;
 
   const wiql = {
     query: `
@@ -32,6 +44,7 @@ export async function fetchClosedWorkItems() {
       WHERE [System.TeamProject] = '${escapeWiqlString(project)}'
         AND [Microsoft.VSTS.Common.ClosedDate] >= '${escapeWiqlString(cutDate)}'
         AND [System.WorkItemType] IN ('User Story', 'Bug', 'Task')
+        ${areaPathWiqlClause(areaPaths)}
       ORDER BY [Microsoft.VSTS.Common.ClosedDate] ASC
     `.trim(),
   };
@@ -59,11 +72,13 @@ export async function fetchClosedWorkItems() {
 
     for (const item of details.value || []) {
       const fields = item.fields || {};
+      const areaPath = fields["System.AreaPath"] || "";
+      if (areaPaths.length && !areaPaths.includes(areaPath)) continue;
       workItems.push({
         id: item.id,
         closedDate: fields["Microsoft.VSTS.Common.ClosedDate"] || null,
         tags: fields["System.Tags"] || "",
-        areaPath: fields["System.AreaPath"] || "",
+        areaPath,
         iterationPath: fields["System.IterationPath"] || "",
         storyPoints: fields["Microsoft.VSTS.Scheduling.StoryPoints"] ?? null,
         workItemType: fields["System.WorkItemType"] || "",

@@ -28,6 +28,9 @@ export const config = {
     organization: process.env.ADO_ORG || fileConfig.azureDevOps.organization,
     project: fileConfig.azureDevOps.project,
     repositories: fileConfig.azureDevOps.repositories || [],
+    areaPathsOfInterest: (fileConfig.azureDevOps.areaPathsOfInterest || [])
+      .map((value) => String(value).trim())
+      .filter(Boolean),
   },
   sonarCloud: {
     organization: fileConfig.sonarCloud?.organization,
@@ -40,3 +43,9 @@ export const config = {
   port: Number(process.env.PORT) || 3000,
   cachePath: path.join(rootDir, "data", "cache.json"),
 };
+
+export function isAreaPathOfInterest(areaPath) {
+  const allowed = config.azureDevOps.areaPathsOfInterest;
+  if (!allowed.length) return true;
+  return allowed.includes(areaPath || "");
+}

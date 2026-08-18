@@ -100,7 +100,6 @@ const tableState = {
   },
 };
 
-const cmpRefreshBtn = document.getElementById("cmpRefreshBtn");
 const cmpClearFiltersBtn = document.getElementById("cmpClearFiltersBtn");
 const cmpStartDateInput = document.getElementById("cmpStartDate");
 const cmpEndDateInput = document.getElementById("cmpEndDate");
@@ -111,7 +110,6 @@ const cmpEmptyState = document.getElementById("cmpEmptyState");
 const cmpMetricsGrid = document.getElementById("cmpMetricsGrid");
 const cmpErrorEl = document.getElementById("cmpError");
 
-const trendRefreshBtn = document.getElementById("trendRefreshBtn");
 const trendClearFiltersBtn = document.getElementById("trendClearFiltersBtn");
 const trendStartDateInput = document.getElementById("trendStartDate");
 const trendEndDateInput = document.getElementById("trendEndDate");
@@ -128,7 +126,6 @@ const trendFirstDerivative = document.getElementById("trendFirstDerivative");
 const trendSecondDerivative = document.getElementById("trendSecondDerivative");
 const TREND_METRIC_KEY = "brheringer.dashboard-trend.metric";
 
-const reposRefreshBtn = document.getElementById("reposRefreshBtn");
 const reposClearFiltersBtn = document.getElementById("reposClearFiltersBtn");
 const reposStartDateInput = document.getElementById("reposStartDate");
 const reposEndDateInput = document.getElementById("reposEndDate");
@@ -138,7 +135,6 @@ const reposTableCard = document.getElementById("reposTableCard");
 const reposBody = document.getElementById("reposBody");
 const reposErrorEl = document.getElementById("reposError");
 
-const wiRefreshBtn = document.getElementById("wiRefreshBtn");
 const wiClearFiltersBtn = document.getElementById("wiClearFiltersBtn");
 const wiStartDateInput = document.getElementById("wiStartDate");
 const wiEndDateInput = document.getElementById("wiEndDate");
@@ -337,11 +333,9 @@ function setError(message) {
 }
 
 function setRefreshing(isRefreshing) {
-  for (const btn of [refreshBtn, cmpRefreshBtn, trendRefreshBtn, reposRefreshBtn, wiRefreshBtn]) {
-    if (!btn) continue;
-    btn.disabled = isRefreshing;
-    btn.textContent = isRefreshing ? "Refreshing…" : "Refresh data";
-  }
+  if (!refreshBtn) return;
+  refreshBtn.disabled = isRefreshing;
+  refreshBtn.textContent = isRefreshing ? "Refreshing…" : "Refresh data";
 }
 
 function fillMetricSet(set, metrics) {
@@ -1178,10 +1172,6 @@ function applyBranding(nextBranding) {
 
 function bindPage() {
   refreshBtn?.addEventListener("click", refreshData);
-  cmpRefreshBtn?.addEventListener("click", refreshData);
-  trendRefreshBtn?.addEventListener("click", refreshData);
-  reposRefreshBtn?.addEventListener("click", refreshData);
-  wiRefreshBtn?.addEventListener("click", refreshData);
   clearFiltersBtn?.addEventListener("click", clearFilters);
   cmpClearFiltersBtn?.addEventListener("click", clearComparisonFilters);
   trendClearFiltersBtn?.addEventListener("click", clearTrendFilters);

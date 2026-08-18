@@ -1,3 +1,5 @@
+import { isAreaPathOfInterest } from "./config.js";
+
 const TECH_DEBT_TAG = "tech-debt";
 const SPRINT_BUG_TAG = "sprint-bug";
 
@@ -147,8 +149,8 @@ export function computeMetrics(cache, filters = {}) {
   const start = toBoundDate(filters.startDate, "start");
   const end = toBoundDate(filters.endDate, "end");
 
-  const workItems = (cache.workItems || []).filter((wi) =>
-    isWithinRange(wi.closedDate, start, end)
+  const workItems = (cache.workItems || []).filter(
+    (wi) => isAreaPathOfInterest(wi.areaPath) && isWithinRange(wi.closedDate, start, end)
   );
   const pullRequests = (cache.pullRequests || []).filter((pr) =>
     isWithinRange(pr.creationDate, start, end)

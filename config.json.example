@@ -6,7 +6,8 @@
   "azureDevOps": {
     "organization": "org",
     "project": "proj",
-    "repositories": ["repo1", "repo2"]
+    "repositories": ["repo1", "repo2"],
+    "areaPathsOfInterest": ["Project\\Team A", "Project\\Team B"]
   },
   "sonarCloud": {
     "organization": "org",

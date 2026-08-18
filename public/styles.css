@@ -42,6 +42,8 @@ body {
   position: sticky;
   top: 0;
   height: 100vh;
+  display: flex;
+  flex-direction: column;
   padding: 1.6rem 1rem;
   border-right: 1px solid var(--border);
   background: rgba(12, 16, 14, 0.78);
@@ -61,6 +63,12 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
+  flex: 1;
+}
+
+.sidebar-refresh {
+  width: 100%;
+  margin-top: 1.2rem;
 }
 
 .nav-link {
@@ -903,10 +911,17 @@ h1 {
   .sidebar-nav {
     flex-direction: row;
     flex-wrap: wrap;
+    flex: none;
   }
 
   .nav-link {
     width: auto;
+  }
+
+  .sidebar-refresh {
+    width: auto;
+    margin-top: 0.75rem;
+    margin-bottom: 0.35rem;
   }
 }
 

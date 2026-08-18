@@ -2,6 +2,8 @@
  * Shared date helpers and paginated detail queries from the local cache.
  */
 
+import { isAreaPathOfInterest } from "./config.js";
+
 /**
  * @param {string|null|undefined} value YYYY-MM-DD
  * @param {"start"|"end"} bound
@@ -69,7 +71,7 @@ export function getWorkItemsPage(cache, options = {}) {
   const { page, pageSize } = parsePagination(options);
 
   const items = ((cache && cache.workItems) || [])
-    .filter((wi) => isWithinRange(wi.closedDate, start, end))
+    .filter((wi) => isAreaPathOfInterest(wi.areaPath) && isWithinRange(wi.closedDate, start, end))
     .slice()
     .sort((a, b) => compareByDateAsc(a, b, "closedDate"));
 
