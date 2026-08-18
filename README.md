@@ -42,13 +42,17 @@ ADO_PAT=your-azure-devops-pat
 SONAR_TOKEN=your-sonarcloud-token
 ```
 
-3. Edit [`config.json`](config.json):
+3. Copy config template and fill in org/project settings:
+
+```bash
+cp config.json.example config.json
+```
 
 ```json
 {
   "branding": {
     "author": "brheringer",
-    "product": "whatever"
+    "product": "org"
   },
   "azureDevOps": {
     "organization": "your-org",
@@ -109,28 +113,3 @@ Defaults: start = `cutDate` from config/cache, end = today. **Clear dates** remo
 - `GET /api/repos?startDate=&endDate=` — pull requests, lines of code, and coverage per repository
 - `GET /api/work-items?startDate=&endDate=` — work-item totals and accumulated daily counts by type
 - `POST /api/refresh?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD` — fetch remote data, overwrite cache, return metrics
-
-## Project layout
-
-```
-config.json
-.env
-src/
-  server.js
-  config.js
-  cache.js
-  metrics.js
-  workItems.js
-  sources/
-    adoClient.js
-    adoWorkItems.js
-    adoPullRequests.js
-    sonarCloud.js
-public/
-  index.html
-  styles.css
-  app.js
-  workItemsCharts.js
-data/
-  cache.json   # generated, gitignored
-```

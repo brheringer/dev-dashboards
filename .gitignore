@@ -1,4 +1,5 @@
 node_modules/
+config.json
 .env
 data/cache.json
 data/cache.json.bak
