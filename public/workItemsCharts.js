@@ -8,9 +8,12 @@ export const WORK_ITEM_SERIES = [
 const observers = new WeakMap();
 const SVG_NS = "http://www.w3.org/2000/svg";
 
-function formatAxisDate(isoDay, { withYear = false } = {}) {
+function formatAxisDate(isoDay, { withYear = false, grain = "day" } = {}) {
   const date = new Date(`${isoDay}T00:00:00.000Z`);
   if (Number.isNaN(date.getTime())) return isoDay;
+  if (grain === "month") {
+    return date.toLocaleDateString(undefined, { month: "short", year: "numeric", timeZone: "UTC" });
+  }
   const options = { month: "short", day: "numeric", timeZone: "UTC" };
   if (withYear) options.year = "numeric";
   return date.toLocaleDateString(undefined, options);
@@ -373,7 +376,12 @@ function paintColumns(container) {
 }
 
 function paintCartesian(container, mode) {
-  const { points = [], emptyMessage = "No work items in this date range." } = container._chartOptions || {};
+  const {
+    points = [],
+    emptyMessage = "No work items in this date range.",
+    xGrain = "day",
+    legendTotals,
+  } = container._chartOptions || {};
   const width = Math.max(container.clientWidth, 0);
   const height = Math.max(container.clientHeight, 0);
   if (width < 40 || height < 40) return;
@@ -404,7 +412,7 @@ function paintCartesian(container, mode) {
 
   const layout = document.createElement("div");
   layout.className = "wi-chart-stack";
-  layout.appendChild(createLegend(last));
+  layout.appendChild(createLegend(legendTotals || last));
   const chartHost = document.createElement("div");
   chartHost.className = "wi-chart-canvas wi-chart-canvas-wide";
   layout.appendChild(chartHost);
@@ -434,7 +442,7 @@ function paintCartesian(container, mode) {
       "text-anchor": "middle",
       class: "trend-axis-label",
     });
-    label.textContent = formatAxisDate(points[index].date);
+    label.textContent = formatAxisDate(points[index].date, { grain: xGrain });
     svg.appendChild(label);
   }
 
@@ -530,7 +538,7 @@ function paintCartesian(container, mode) {
     const rows = WORK_ITEM_SERIES.map(
       (series) => `${series.label}: ${formatCount(Number(point[series.key]) || 0)}`
     );
-    tooltip.textContent = `${formatAxisDate(point.date, { withYear: true })}\n${rows.join("\n")}\nTotal: ${formatCount(seriesTotal(point))}`;
+    tooltip.textContent = `${formatAxisDate(point.date, { withYear: true, grain: xGrain })}\n${rows.join("\n")}\nTotal: ${formatCount(seriesTotal(point))}`;
     tooltip.classList.remove("hidden");
     placeTooltip(tooltip, cx, pad.top + 8, svgW);
   }

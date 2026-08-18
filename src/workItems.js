@@ -52,6 +52,59 @@ function enumerateDays(start, end) {
   return days;
 }
 
+function addMonths(yearMonth, amount) {
+  const [year, month] = yearMonth.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1 + amount, 1));
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
+function enumerateMonths(start, end) {
+  if (!start || !end || start > end) return [];
+  const months = [];
+  let month = start.slice(0, 7);
+  const endMonth = end.slice(0, 7);
+  let guard = 0;
+  while (month <= endMonth && guard < 240) {
+    months.push(month);
+    month = addMonths(month, 1);
+    guard += 1;
+  }
+  return months;
+}
+
+function countPoints(keys, buckets) {
+  return keys.map((key) => {
+    const delta = buckets.get(key) || emptyTotals();
+    return {
+      date: key.length === 7 ? `${key}-01` : key,
+      userStories: delta.userStories,
+      techDebts: delta.techDebts,
+      usBugs: delta.usBugs,
+      sprintBugs: delta.sprintBugs,
+    };
+  });
+}
+
+function accumulatePoints(keys, buckets) {
+  const running = emptyTotals();
+  return keys.map((key) => {
+    const delta = buckets.get(key);
+    if (delta) {
+      running.userStories += delta.userStories;
+      running.techDebts += delta.techDebts;
+      running.usBugs += delta.usBugs;
+      running.sprintBugs += delta.sprintBugs;
+    }
+    return {
+      date: key.length === 7 ? `${key}-01` : key,
+      userStories: running.userStories,
+      techDebts: running.techDebts,
+      usBugs: running.usBugs,
+      sprintBugs: running.sprintBugs,
+    };
+  });
+}
+
 function earliestClosedDay(workItems) {
   const dates = workItems.map((item) => isoDay(item.closedDate)).filter(Boolean).sort();
   return dates[0] || null;
@@ -75,6 +128,8 @@ function emptyPayload(filters) {
     cutDate: null,
     totals: emptyTotals(),
     points: [],
+    monthPoints: [],
+    monthCounts: [],
   };
 }
 
@@ -102,8 +157,10 @@ export function computeWorkItems(cache, filters = {}) {
   const start = toBoundDate(startDate, "start");
   const end = toBoundDate(endDate, "end");
   const days = enumerateDays(startDate, endDate);
+  const months = enumerateMonths(startDate, endDate);
 
   const byDay = new Map();
+  const byMonth = new Map();
   const totals = emptyTotals();
 
   for (const item of workItems) {
@@ -115,28 +172,15 @@ export function computeWorkItems(cache, filters = {}) {
     totals[series] += 1;
     const day = isoDay(item.closedDate);
     if (!day) continue;
-    const bucket = byDay.get(day) || emptyTotals();
-    bucket[series] += 1;
-    byDay.set(day, bucket);
-  }
+    const dayBucket = byDay.get(day) || emptyTotals();
+    dayBucket[series] += 1;
+    byDay.set(day, dayBucket);
 
-  const running = emptyTotals();
-  const points = days.map((date) => {
-    const delta = byDay.get(date);
-    if (delta) {
-      running.userStories += delta.userStories;
-      running.techDebts += delta.techDebts;
-      running.usBugs += delta.usBugs;
-      running.sprintBugs += delta.sprintBugs;
-    }
-    return {
-      date,
-      userStories: running.userStories,
-      techDebts: running.techDebts,
-      usBugs: running.usBugs,
-      sprintBugs: running.sprintBugs,
-    };
-  });
+    const month = day.slice(0, 7);
+    const monthBucket = byMonth.get(month) || emptyTotals();
+    monthBucket[series] += 1;
+    byMonth.set(month, monthBucket);
+  }
 
   return {
     hasData: true,
@@ -146,6 +190,8 @@ export function computeWorkItems(cache, filters = {}) {
     areaPath,
     cutDate: cache.cutDate || null,
     totals,
-    points,
+    points: accumulatePoints(days, byDay),
+    monthPoints: accumulatePoints(months, byMonth),
+    monthCounts: countPoints(months, byMonth),
   };
 }

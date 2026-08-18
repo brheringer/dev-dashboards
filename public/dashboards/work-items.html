@@ -63,6 +63,46 @@
           >
             Acc. Daily stacked
           </button>
+          <button
+            id="wiTabAccMonthly"
+            type="button"
+            class="tab"
+            role="tab"
+            aria-selected="false"
+            aria-controls="wiPanelAccMonthly"
+          >
+            Acc. Monthly
+          </button>
+          <button
+            id="wiTabAccMonthlyStacked"
+            type="button"
+            class="tab"
+            role="tab"
+            aria-selected="false"
+            aria-controls="wiPanelAccMonthlyStacked"
+          >
+            Acc. Monthly stacked
+          </button>
+          <button
+            id="wiTabMonthly"
+            type="button"
+            class="tab"
+            role="tab"
+            aria-selected="false"
+            aria-controls="wiPanelMonthly"
+          >
+            Monthly
+          </button>
+          <button
+            id="wiTabMonthlyStacked"
+            type="button"
+            class="tab"
+            role="tab"
+            aria-selected="false"
+            aria-controls="wiPanelMonthlyStacked"
+          >
+            Monthly stacked
+          </button>
         </div>
 
         <div id="wiPanelTotal" class="tab-panel" role="tabpanel">
@@ -97,6 +137,42 @@
               <h2>Accumulated count by day</h2>
             </div>
             <div id="wiStackedChart" class="wi-chart wi-chart-wide" aria-label="Accumulated work items stacked column chart"></div>
+          </section>
+        </div>
+
+        <div id="wiPanelAccMonthly" class="tab-panel hidden" role="tabpanel" hidden>
+          <section class="chart-card">
+            <div class="chart-card-head">
+              <h2>Accumulated count by month</h2>
+            </div>
+            <div id="wiMonthlyLineChart" class="wi-chart wi-chart-wide" aria-label="Accumulated work items monthly line chart"></div>
+          </section>
+        </div>
+
+        <div id="wiPanelAccMonthlyStacked" class="tab-panel hidden" role="tabpanel" hidden>
+          <section class="chart-card">
+            <div class="chart-card-head">
+              <h2>Accumulated count by month</h2>
+            </div>
+            <div id="wiMonthlyStackedChart" class="wi-chart wi-chart-wide" aria-label="Accumulated work items monthly stacked column chart"></div>
+          </section>
+        </div>
+
+        <div id="wiPanelMonthly" class="tab-panel hidden" role="tabpanel" hidden>
+          <section class="chart-card">
+            <div class="chart-card-head">
+              <h2>Count by month</h2>
+            </div>
+            <div id="wiCountMonthlyLineChart" class="wi-chart wi-chart-wide" aria-label="Work items count by month line chart"></div>
+          </section>
+        </div>
+
+        <div id="wiPanelMonthlyStacked" class="tab-panel hidden" role="tabpanel" hidden>
+          <section class="chart-card">
+            <div class="chart-card-head">
+              <h2>Count by month</h2>
+            </div>
+            <div id="wiCountMonthlyStackedChart" class="wi-chart wi-chart-wide" aria-label="Work items count by month stacked column chart"></div>
           </section>
         </div>
       </section>

@@ -150,15 +150,27 @@ const wiPieChart = document.getElementById("wiPieChart");
 const wiColumnChart = document.getElementById("wiColumnChart");
 const wiLineChart = document.getElementById("wiLineChart");
 const wiStackedChart = document.getElementById("wiStackedChart");
+const wiMonthlyLineChart = document.getElementById("wiMonthlyLineChart");
+const wiMonthlyStackedChart = document.getElementById("wiMonthlyStackedChart");
+const wiCountMonthlyLineChart = document.getElementById("wiCountMonthlyLineChart");
+const wiCountMonthlyStackedChart = document.getElementById("wiCountMonthlyStackedChart");
 const wiChartTabs = {
   total: document.getElementById("wiTabTotal"),
   accDaily: document.getElementById("wiTabAccDaily"),
   accStacked: document.getElementById("wiTabAccStacked"),
+  accMonthly: document.getElementById("wiTabAccMonthly"),
+  accMonthlyStacked: document.getElementById("wiTabAccMonthlyStacked"),
+  monthly: document.getElementById("wiTabMonthly"),
+  monthlyStacked: document.getElementById("wiTabMonthlyStacked"),
 };
 const wiChartPanels = {
   total: document.getElementById("wiPanelTotal"),
   accDaily: document.getElementById("wiPanelAccDaily"),
   accStacked: document.getElementById("wiPanelAccStacked"),
+  accMonthly: document.getElementById("wiPanelAccMonthly"),
+  accMonthlyStacked: document.getElementById("wiPanelAccMonthlyStacked"),
+  monthly: document.getElementById("wiPanelMonthly"),
+  monthlyStacked: document.getElementById("wiPanelMonthlyStacked"),
 };
 
 function metricSet(prefix) {
@@ -539,6 +551,13 @@ function paintWorkItemsCharts(data) {
   const emptyMessage = "No work items in this date range.";
   const totals = data.totals || {};
   const points = data.points || [];
+  const monthPoints = data.monthPoints || [];
+  const monthCounts = data.monthCounts || [];
+  const monthChart = {
+    emptyMessage,
+    xGrain: "month",
+    legendTotals: totals,
+  };
 
   if (activeWiChartTab === "total") {
     renderPieChart(wiPieChart, { totals, emptyMessage });
@@ -549,17 +568,33 @@ function paintWorkItemsCharts(data) {
     renderMultiLineChart(wiLineChart, { points, emptyMessage });
     return;
   }
-  renderStackedColumnChart(wiStackedChart, { points, emptyMessage });
+  if (activeWiChartTab === "accStacked") {
+    renderStackedColumnChart(wiStackedChart, { points, emptyMessage });
+    return;
+  }
+  if (activeWiChartTab === "accMonthly") {
+    renderMultiLineChart(wiMonthlyLineChart, { ...monthChart, points: monthPoints });
+    return;
+  }
+  if (activeWiChartTab === "accMonthlyStacked") {
+    renderStackedColumnChart(wiMonthlyStackedChart, { ...monthChart, points: monthPoints });
+    return;
+  }
+  if (activeWiChartTab === "monthly") {
+    renderMultiLineChart(wiCountMonthlyLineChart, { ...monthChart, points: monthCounts });
+    return;
+  }
+  renderStackedColumnChart(wiCountMonthlyStackedChart, { ...monthChart, points: monthCounts });
 }
 
 function setWorkItemsChartTab(tabId) {
   activeWiChartTab = wiChartTabs[tabId] ? tabId : "total";
   for (const [key, tab] of Object.entries(wiChartTabs)) {
     const selected = key === activeWiChartTab;
-    tab.classList.toggle("active", selected);
-    tab.setAttribute("aria-selected", selected ? "true" : "false");
-    wiChartPanels[key].classList.toggle("hidden", !selected);
-    wiChartPanels[key].hidden = !selected;
+    tab?.classList.toggle("active", selected);
+    tab?.setAttribute("aria-selected", selected ? "true" : "false");
+    wiChartPanels[key]?.classList.toggle("hidden", !selected);
+    if (wiChartPanels[key]) wiChartPanels[key].hidden = !selected;
   }
   if (lastWorkItems) {
     requestAnimationFrame(() => paintWorkItemsCharts(lastWorkItems));
