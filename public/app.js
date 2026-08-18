@@ -34,6 +34,7 @@ const refreshBtn = document.getElementById("refreshBtn");
 const clearFiltersBtn = document.getElementById("clearFiltersBtn");
 const startDateInput = document.getElementById("startDate");
 const endDateInput = document.getElementById("endDate");
+const areaPathSelect = document.getElementById("devAreaPath");
 const statusEl = document.getElementById("status");
 const emptyState = document.getElementById("emptyState");
 const metricsGrid = document.getElementById("metricsGrid");
@@ -105,6 +106,7 @@ const cmpStartDateInput = document.getElementById("cmpStartDate");
 const cmpEndDateInput = document.getElementById("cmpEndDate");
 const cmpStartDate2Input = document.getElementById("cmpStartDate2");
 const cmpEndDate2Input = document.getElementById("cmpEndDate2");
+const cmpAreaPathSelect = document.getElementById("cmpAreaPath");
 const cmpStatusEl = document.getElementById("cmpStatus");
 const cmpEmptyState = document.getElementById("cmpEmptyState");
 const cmpMetricsGrid = document.getElementById("cmpMetricsGrid");
@@ -114,6 +116,7 @@ const trendClearFiltersBtn = document.getElementById("trendClearFiltersBtn");
 const trendStartDateInput = document.getElementById("trendStartDate");
 const trendEndDateInput = document.getElementById("trendEndDate");
 const trendMetricSelect = document.getElementById("trendMetric");
+const trendAreaPathSelect = document.getElementById("trendAreaPath");
 const trendStatusEl = document.getElementById("trendStatus");
 const trendEmptyState = document.getElementById("trendEmptyState");
 const trendResults = document.getElementById("trendResults");
@@ -181,10 +184,16 @@ const comparisonSets = {
 };
 
 const PAGE_DATE_INPUTS = {
-  "dev-metrics": [startDateInput, endDateInput],
+  "dev-metrics": [startDateInput, endDateInput, areaPathSelect],
   "work-items": [wiStartDateInput, wiEndDateInput, wiAreaPathSelect],
-  comparison: [cmpStartDateInput, cmpEndDateInput, cmpStartDate2Input, cmpEndDate2Input],
-  trend: [trendStartDateInput, trendEndDateInput],
+  comparison: [
+    cmpStartDateInput,
+    cmpEndDateInput,
+    cmpStartDate2Input,
+    cmpEndDate2Input,
+    cmpAreaPathSelect,
+  ],
+  trend: [trendStartDateInput, trendEndDateInput, trendAreaPathSelect],
   repos: [reposStartDateInput, reposEndDateInput],
 };
 
@@ -269,6 +278,7 @@ function getFilters() {
   return {
     startDate: startDateInput?.value || null,
     endDate: endDateInput?.value || null,
+    areaPath: areaPathSelect?.value || null,
   };
 }
 
@@ -287,11 +297,26 @@ function getReposFilters() {
   };
 }
 
+const TREND_METRICS_WITHOUT_AREA_PATH = new Set(["pullRequests", "linesOfCode", "coverage"]);
+
+function trendAreaPathEnabled() {
+  const metric = trendMetricSelect?.value || "storyPoints";
+  return !TREND_METRICS_WITHOUT_AREA_PATH.has(metric);
+}
+
+function syncTrendAreaPathFilter() {
+  if (!trendAreaPathSelect) return;
+  const enabled = trendAreaPathEnabled();
+  trendAreaPathSelect.disabled = !enabled;
+  trendAreaPathSelect.closest(".filter-field")?.classList.toggle("is-disabled", !enabled);
+}
+
 function getTrendFilters() {
   return {
     startDate: trendStartDateInput?.value || null,
     endDate: trendEndDateInput?.value || null,
     metric: trendMetricSelect?.value || "storyPoints",
+    areaPath: trendAreaPathEnabled() ? trendAreaPathSelect?.value || null : null,
   };
 }
 
@@ -300,11 +325,13 @@ function getComparisonPeriod(index) {
     return {
       startDate: cmpStartDate2Input?.value || null,
       endDate: cmpEndDate2Input?.value || null,
+      areaPath: cmpAreaPathSelect?.value || null,
     };
   }
   return {
     startDate: cmpStartDateInput?.value || null,
     endDate: cmpEndDateInput?.value || null,
+    areaPath: cmpAreaPathSelect?.value || null,
   };
 }
 
@@ -312,6 +339,7 @@ function buildQuery(extra = {}, filters = getFilters()) {
   const params = new URLSearchParams();
   if (filters.startDate) params.set("startDate", filters.startDate);
   if (filters.endDate) params.set("endDate", filters.endDate);
+  if (filters.areaPath) params.set("areaPath", filters.areaPath);
   for (const [key, value] of Object.entries(extra)) {
     if (value !== undefined && value !== null && value !== "") {
       params.set(key, String(value));
@@ -420,6 +448,7 @@ function renderMetrics(metrics) {
 
   emptyState.classList.add("hidden");
   metricsGrid.classList.remove("hidden");
+  syncAreaPathMetricVisibility(metrics.areaPath);
   fillMetricSet(
     {
       userStories: fields.userStories,
@@ -438,7 +467,9 @@ function renderMetrics(metrics) {
     metrics
   );
 
-  statusEl.textContent = `Last refreshed: ${formatDateTime(metrics.fetchedAt)} · Filtered ${rangeLabel(metrics)}`;
+  statusEl.textContent = `Last refreshed: ${formatDateTime(metrics.fetchedAt)} · Filtered ${rangeLabel(metrics)}${
+    metrics.areaPath ? ` · ${metrics.areaPath}` : ""
+  }`;
 }
 
 function setReposError(message) {
@@ -643,7 +674,9 @@ function renderTrend(trend) {
         : "No data in this date range.",
   });
 
-  trendStatusEl.textContent = `Last refreshed: ${formatDateTime(trend.fetchedAt)} · Filtered ${rangeLabel(trend)}`;
+  trendStatusEl.textContent = `Last refreshed: ${formatDateTime(trend.fetchedAt)} · Filtered ${rangeLabel(trend)}${
+    trend.areaPath ? ` · ${trend.areaPath}` : ""
+  }`;
 }
 
 function setCmpError(message) {
@@ -669,6 +702,7 @@ function renderComparison(period1, period2) {
 
   cmpEmptyState.classList.add("hidden");
   cmpMetricsGrid.classList.remove("hidden");
+  syncAreaPathMetricVisibility(period1.areaPath || period2.areaPath);
   fillMetricSet(comparisonSets.period1, period1);
   fillMetricSet(comparisonSets.period2, period2);
 
@@ -683,7 +717,9 @@ function renderComparison(period1, period2) {
   }
 
   const fetchedAt = period1.fetchedAt || period2.fetchedAt;
-  cmpStatusEl.textContent = `Last refreshed: ${formatDateTime(fetchedAt)} · Period 1 ${rangeLabel(period1)} · Period 2 ${rangeLabel(period2)}`;
+  cmpStatusEl.textContent = `Last refreshed: ${formatDateTime(fetchedAt)} · Period 1 ${rangeLabel(period1)} · Period 2 ${rangeLabel(period2)}${
+    period1.areaPath || period2.areaPath ? ` · ${period1.areaPath || period2.areaPath}` : ""
+  }`;
 }
 
 function renderWorkItemsRows(items) {
@@ -777,10 +813,10 @@ function setActiveTab(kind) {
   activeTab = kind;
   for (const [key, tab] of Object.entries(tabs)) {
     const selected = key === kind;
-    tab.classList.toggle("active", selected);
-    tab.setAttribute("aria-selected", selected ? "true" : "false");
-    panels[key].classList.toggle("hidden", !selected);
-    panels[key].hidden = !selected;
+    tab?.classList.toggle("active", selected);
+    tab?.setAttribute("aria-selected", selected ? "true" : "false");
+    panels[key]?.classList.toggle("hidden", !selected);
+    if (panels[key]) panels[key].hidden = !selected;
   }
 
   if (dataAccordion?.open) {
@@ -802,26 +838,42 @@ function reloadOpenTables({ resetPage = true } = {}) {
   });
 }
 
-function fillAreaPathOptions(areaPaths) {
-  if (!wiAreaPathSelect) return;
-  const previous = wiAreaPathSelect.value;
+function fillAreaPathSelect(select, areaPaths) {
+  if (!select) return;
+  const previous = select.value;
   const paths = Array.isArray(areaPaths) ? areaPaths : [];
 
-  wiAreaPathSelect.innerHTML = "";
+  select.innerHTML = "";
   const allOption = document.createElement("option");
   allOption.value = "";
   allOption.textContent = "All area paths";
-  wiAreaPathSelect.appendChild(allOption);
+  select.appendChild(allOption);
 
   for (const path of paths) {
     const option = document.createElement("option");
     option.value = path;
     option.textContent = path;
-    wiAreaPathSelect.appendChild(option);
+    select.appendChild(option);
   }
 
-  const stillValid = [...wiAreaPathSelect.options].some((option) => option.value === previous);
-  wiAreaPathSelect.value = stillValid ? previous : "";
+  const stillValid = [...select.options].some((option) => option.value === previous);
+  select.value = stillValid ? previous : "";
+}
+
+function fillAreaPathOptions(areaPaths) {
+  fillAreaPathSelect(wiAreaPathSelect, areaPaths);
+  fillAreaPathSelect(trendAreaPathSelect, areaPaths);
+  fillAreaPathSelect(areaPathSelect, areaPaths);
+  fillAreaPathSelect(cmpAreaPathSelect, areaPaths);
+  syncTrendAreaPathFilter();
+}
+
+function syncAreaPathMetricVisibility(areaPath) {
+  const hide = Boolean(areaPath);
+  metricsGrid?.classList.toggle("area-path-filtered", hide);
+  cmpMetricsGrid?.classList.toggle("area-path-filtered", hide);
+  tabs.pullRequests?.classList.toggle("hidden", hide);
+  if (hide && activeTab === "pullRequests" && tabs.workItems) setActiveTab("workItems");
 }
 
 async function applyWorkItemsFilters() {
@@ -867,7 +919,7 @@ async function applyTrendFilters() {
 
   const filters = getTrendFilters();
   const response = await fetch(
-    `/api/trend${buildQuery({ metric: filters.metric }, filters)}`
+    `/api/trend${buildQuery({ metric: filters.metric, areaPath: filters.areaPath }, filters)}`
   );
   if (!response.ok) {
     throw new Error("Failed to load trend from cache.");
@@ -876,6 +928,7 @@ async function applyTrendFilters() {
   const data = await response.json();
   if (requestId !== latestTrendRequestId) return;
 
+  fillAreaPathOptions(data.areaPaths);
   renderTrend(data.trend);
 }
 
@@ -897,6 +950,7 @@ async function applyComparisonFilters() {
   const data2 = await response2.json();
   if (requestId !== latestComparisonRequestId) return;
 
+  fillAreaPathOptions(data1.areaPaths || data2.areaPaths);
   renderComparison(data1.metrics, data2.metrics);
 }
 
@@ -915,6 +969,7 @@ async function applyFilters() {
     return;
   }
 
+  fillAreaPathOptions(data.areaPaths);
   renderMetrics(data.metrics);
   reloadOpenTables({ resetPage: true });
 
@@ -996,6 +1051,7 @@ function restoreTrendMetric() {
 }
 
 function onTrendFiltersChanged() {
+  syncTrendAreaPathFilter();
   persistPageDates("trend");
   persistTrendMetric();
   reloadTrendMetrics();
@@ -1132,6 +1188,7 @@ async function init() {
 
   restorePageDates(currentDashboardId);
   restoreTrendMetric();
+  syncTrendAreaPathFilter();
   await reloadCurrentDashboard();
 }
 
@@ -1179,13 +1236,16 @@ function bindPage() {
   wiClearFiltersBtn?.addEventListener("click", clearWorkItemsFilters);
   startDateInput?.addEventListener("change", onFiltersChanged);
   endDateInput?.addEventListener("change", onFiltersChanged);
+  areaPathSelect?.addEventListener("change", onFiltersChanged);
   cmpStartDateInput?.addEventListener("change", onComparisonFiltersChanged);
   cmpEndDateInput?.addEventListener("change", onComparisonFiltersChanged);
   cmpStartDate2Input?.addEventListener("change", onComparisonFiltersChanged);
   cmpEndDate2Input?.addEventListener("change", onComparisonFiltersChanged);
+  cmpAreaPathSelect?.addEventListener("change", onComparisonFiltersChanged);
   trendStartDateInput?.addEventListener("change", onTrendFiltersChanged);
   trendEndDateInput?.addEventListener("change", onTrendFiltersChanged);
   trendMetricSelect?.addEventListener("change", onTrendFiltersChanged);
+  trendAreaPathSelect?.addEventListener("change", onTrendFiltersChanged);
   reposStartDateInput?.addEventListener("change", onReposFiltersChanged);
   reposEndDateInput?.addEventListener("change", onReposFiltersChanged);
   wiStartDateInput?.addEventListener("change", onWorkItemsFiltersChanged);

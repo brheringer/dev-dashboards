@@ -101,7 +101,7 @@ function readWorkItemsFilters(req) {
 
 function readDetailQuery(req) {
   return {
-    ...readDateFilters(req),
+    ...readWorkItemsFilters(req),
     page: req.query.page,
     pageSize: req.query.pageSize,
   };
@@ -119,9 +119,10 @@ app.get("/api/config", (_req, res) => {
 
 app.get("/api/metrics", (req, res) => {
   const cache = readCache();
-  const filters = readDateFilters(req);
+  const filters = readWorkItemsFilters(req);
   res.json({
     metrics: computeMetrics(cache, filters),
+    areaPaths: config.azureDevOps.areaPathsOfInterest,
     refreshing: refreshInProgress,
     cutDate: cache?.cutDate || config.cutDate,
   });
@@ -129,10 +130,11 @@ app.get("/api/metrics", (req, res) => {
 
 app.get("/api/trend", (req, res) => {
   const cache = readCache();
-  const filters = readDateFilters(req);
+  const filters = readWorkItemsFilters(req);
   const metric = typeof req.query.metric === "string" ? req.query.metric : "storyPoints";
   res.json({
     trend: computeTrend(cache, { ...filters, metric }),
+    areaPaths: config.azureDevOps.areaPathsOfInterest,
     refreshing: refreshInProgress,
     cutDate: cache?.cutDate || config.cutDate,
   });

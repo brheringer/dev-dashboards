@@ -63,15 +63,21 @@ function paginate(items, page, pageSize) {
 
 /**
  * @param {object|null} cache
- * @param {{ startDate?: string|null, endDate?: string|null, page?: number, pageSize?: number }} options
+ * @param {{ startDate?: string|null, endDate?: string|null, areaPath?: string|null, page?: number, pageSize?: number }} options
  */
 export function getWorkItemsPage(cache, options = {}) {
   const start = toBoundDate(options.startDate, "start");
   const end = toBoundDate(options.endDate, "end");
+  const areaPath = options.areaPath || null;
   const { page, pageSize } = parsePagination(options);
 
   const items = ((cache && cache.workItems) || [])
-    .filter((wi) => isAreaPathOfInterest(wi.areaPath) && isWithinRange(wi.closedDate, start, end))
+    .filter(
+      (wi) =>
+        isAreaPathOfInterest(wi.areaPath) &&
+        (!areaPath || (wi.areaPath || "") === areaPath) &&
+        isWithinRange(wi.closedDate, start, end)
+    )
     .slice()
     .sort((a, b) => compareByDateAsc(a, b, "closedDate"));
 

@@ -118,18 +118,26 @@ export function aggregateCode(projects, bound, options) {
   };
 }
 
+function matchesSelectedAreaPath(item, areaPath) {
+  if (!isAreaPathOfInterest(item.areaPath)) return false;
+  if (!areaPath) return true;
+  return (item.areaPath || "") === areaPath;
+}
+
 /**
  * Aggregate dashboard metrics from a local cache payload.
  * @param {object|null} cache
- * @param {{ startDate?: string|null, endDate?: string|null }} [filters]
+ * @param {{ startDate?: string|null, endDate?: string|null, areaPath?: string|null }} [filters]
  */
 export function computeMetrics(cache, filters = {}) {
+  const areaPath = filters.areaPath || null;
   if (!cache) {
     return {
       hasData: false,
       fetchedAt: null,
       startDate: filters.startDate || null,
       endDate: filters.endDate || null,
+      areaPath,
       cutDate: null,
       userStories: 0,
       storyPoints: 0,
@@ -150,7 +158,7 @@ export function computeMetrics(cache, filters = {}) {
   const end = toBoundDate(filters.endDate, "end");
 
   const workItems = (cache.workItems || []).filter(
-    (wi) => isAreaPathOfInterest(wi.areaPath) && isWithinRange(wi.closedDate, start, end)
+    (wi) => matchesSelectedAreaPath(wi, areaPath) && isWithinRange(wi.closedDate, start, end)
   );
   const pullRequests = (cache.pullRequests || []).filter((pr) =>
     isWithinRange(pr.creationDate, start, end)
@@ -205,6 +213,7 @@ export function computeMetrics(cache, filters = {}) {
     fetchedAt: cache.fetchedAt || null,
     startDate: filters.startDate || null,
     endDate: filters.endDate || null,
+    areaPath,
     cutDate: cache.cutDate || null,
     userStories: userStories.length,
     storyPoints: Math.round(storyPoints * 100) / 100,

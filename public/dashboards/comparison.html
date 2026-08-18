@@ -24,6 +24,12 @@
           <span>End date 2</span>
           <input id="cmpEndDate2" type="date" />
         </label>
+        <label class="filter-field filter-field-area">
+          <span>Area path</span>
+          <select id="cmpAreaPath">
+            <option value="">All area paths</option>
+          </select>
+        </label>
         <button id="cmpClearFiltersBtn" type="button" class="secondary-btn">
           Clear dates
         </button>
@@ -109,7 +115,7 @@
             <p id="cmp2-usBugs" class="value">—</p>
           </article>
         </div>
-        <div class="metrics-row metrics-row-compare">
+        <div class="metrics-row metrics-row-compare metrics-row-no-area-path">
           <article class="metric">
             <h2>Pull Requests</h2>
             <p id="cmp1-pullRequests" class="value">—</p>
@@ -123,7 +129,7 @@
             <p id="cmp2-pullRequests" class="value">—</p>
           </article>
         </div>
-        <div class="metrics-row metrics-row-compare">
+        <div class="metrics-row metrics-row-compare metrics-row-no-area-path">
           <article class="metric">
             <h2>Lines of Code</h2>
             <p id="cmp1-linesOfCode" class="value">—</p>
@@ -141,7 +147,7 @@
             <p id="cmp2-linesOfCodeHint" class="metric-hint"></p>
           </article>
         </div>
-        <div class="metrics-row metrics-row-compare">
+        <div class="metrics-row metrics-row-compare metrics-row-no-area-path">
           <article class="metric">
             <h2>Coverage</h2>
             <p id="cmp1-coverage" class="value">—</p>

@@ -16,6 +16,12 @@
           <span>End date</span>
           <input id="endDate" type="date" />
         </label>
+        <label class="filter-field filter-field-area">
+          <span>Area path</span>
+          <select id="devAreaPath">
+            <option value="">All area paths</option>
+          </select>
+        </label>
         <button id="clearFiltersBtn" type="button" class="secondary-btn">
           Clear dates
         </button>
@@ -47,12 +53,12 @@
             <h2>US Bugs</h2>
             <p id="usBugs" class="value">—</p>
           </article>
-          <article class="metric">
+          <article class="metric metric-no-area-path">
             <h2>Pull Requests</h2>
             <p id="pullRequests" class="value">—</p>
           </article>
         </div>
-        <div class="metrics-row metrics-row-2">
+        <div class="metrics-row metrics-row-2 metrics-row-no-area-path">
           <article class="metric">
             <h2>Lines of Code</h2>
             <p id="linesOfCode" class="value">—</p>

@@ -99,12 +99,24 @@ function roundValue(value, unit) {
   return value;
 }
 
+function trendMetricUsesAreaPath(metricId) {
+  const meta = TREND_METRICS[metricId];
+  return Boolean(meta) && meta.kind === "cumulative" && metricId !== "pullRequests";
+}
+
+function matchesTrendAreaPath(item, areaPath) {
+  if (!isAreaPathOfInterest(item.areaPath)) return false;
+  if (!areaPath) return true;
+  return (item.areaPath || "") === areaPath;
+}
+
 function emptyTrend(filters, metricId, meta) {
   return {
     hasData: false,
     fetchedAt: null,
     startDate: filters.startDate || null,
     endDate: filters.endDate || null,
+    areaPath: trendMetricUsesAreaPath(metricId) ? filters.areaPath || null : null,
     metric: metricId,
     metricLabel: meta.label,
     kind: meta.kind,
@@ -192,8 +204,10 @@ function codeSeries(projects, days, field) {
   });
 }
 
-function buildTrendPoints(metricId, meta, cache, start, end, days) {
-  const workItems = (cache.workItems || []).filter((wi) => isAreaPathOfInterest(wi.areaPath));
+function buildTrendPoints(metricId, meta, cache, start, end, days, areaPath) {
+  const workItems = (cache.workItems || []).filter((wi) =>
+    matchesTrendAreaPath(wi, areaPath)
+  );
   const pullRequests = cache.pullRequests || [];
   const sonar = cache.sonar || [];
 
@@ -323,7 +337,7 @@ function computeDerivatives(points) {
   };
 }
 
-function collectBoundHintDates(metricId, meta, cache) {
+function collectBoundHintDates(metricId, meta, cache, areaPath) {
   const dates = [];
   if (metricId === "pullRequests") {
     for (const pr of cache.pullRequests || []) dates.push(isoDay(pr.creationDate));
@@ -331,7 +345,7 @@ function collectBoundHintDates(metricId, meta, cache) {
   }
   if (meta.kind === "cumulative") {
     for (const wi of cache.workItems || []) {
-      if (!isAreaPathOfInterest(wi.areaPath)) continue;
+      if (!matchesTrendAreaPath(wi, areaPath)) continue;
       dates.push(isoDay(wi.closedDate));
     }
     return dates;
@@ -348,11 +362,12 @@ function collectBoundHintDates(metricId, meta, cache) {
  * LOC and coverage are point-in-time levels from SonarCloud history.
  *
  * @param {object|null} cache
- * @param {{ startDate?: string|null, endDate?: string|null, metric?: string|null }} [filters]
+ * @param {{ startDate?: string|null, endDate?: string|null, metric?: string|null, areaPath?: string|null }} [filters]
  */
 export function computeTrend(cache, filters = {}) {
   const metricId = TREND_METRICS[filters.metric] ? filters.metric : "storyPoints";
   const meta = TREND_METRICS[metricId];
+  const areaPath = trendMetricUsesAreaPath(metricId) ? filters.areaPath || null : null;
 
   if (!cache) {
     return emptyTrend(filters, metricId, meta);
@@ -362,7 +377,7 @@ export function computeTrend(cache, filters = {}) {
   const startDate =
     filters.startDate ||
     cache.cutDate ||
-    earliestDay(collectBoundHintDates(metricId, meta, cache)) ||
+    earliestDay(collectBoundHintDates(metricId, meta, cache, areaPath)) ||
     endDate;
   const days = enumerateDays(startDate, endDate);
   const points = buildTrendPoints(
@@ -371,7 +386,8 @@ export function computeTrend(cache, filters = {}) {
     cache,
     toBoundDate(startDate, "start"),
     toBoundDate(endDate, "end"),
-    days
+    days,
+    areaPath
   );
 
   const lastDefined = [...points].reverse().find((point) => point.value !== null);
@@ -381,6 +397,7 @@ export function computeTrend(cache, filters = {}) {
     fetchedAt: cache.fetchedAt || null,
     startDate,
     endDate,
+    areaPath,
     metric: metricId,
     metricLabel: meta.label,
     kind: meta.kind,
