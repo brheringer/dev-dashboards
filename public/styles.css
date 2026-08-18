@@ -431,15 +431,150 @@ h1 {
 
 .metrics.is-stale,
 .chart-card.is-stale,
-.trend-results.is-stale {
+.trend-results.is-stale,
+.wi-results.is-stale {
   opacity: 0.55;
   transition: opacity 0.12s ease;
 }
 
-.trend-results {
+.trend-results,
+.wi-results {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+}
+
+.wi-results > .tabs {
+  padding-top: 0;
+  margin-bottom: 0;
+}
+
+.charts-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.charts-grid-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.wi-chart {
+  position: relative;
+  width: 100%;
+  height: 320px;
+}
+
+.wi-chart-wide {
+  height: 420px;
+}
+
+.wi-chart-layout {
+  display: flex;
+  align-items: center;
+  gap: 1.1rem;
+  height: 100%;
+}
+
+.wi-chart-layout-stack {
+  flex-direction: column;
+  justify-content: center;
+}
+
+.wi-chart-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  height: 100%;
+}
+
+.wi-chart-canvas {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+}
+
+.wi-chart-canvas-wide {
+  flex: 1 1 auto;
+  min-height: 280px;
+}
+
+.wi-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  min-width: 170px;
+}
+
+.wi-chart-stack .wi-legend {
+  flex-direction: row;
+  flex-wrap: wrap;
+  min-width: 0;
+  gap: 0.55rem 1rem;
+}
+
+.wi-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.82rem;
+  color: var(--ink);
+}
+
+.wi-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex: 0 0 auto;
+}
+
+.wi-legend-value {
+  margin-left: auto;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  padding-left: 0.6rem;
+}
+
+.wi-chart-stack .wi-legend-value {
+  margin-left: 0;
+}
+
+.wi-pie-slice {
+  stroke: #0f1412;
+  stroke-width: 1.5;
+}
+
+.wi-pie-total {
+  fill: var(--ink);
+  font-size: 18px;
+  font-weight: 700;
+  font-family: var(--font-body);
+}
+
+.wi-pie-total-label {
+  fill: var(--muted);
+  font-size: 11px;
+  font-family: var(--font-body);
+}
+
+.wi-bar-value {
+  fill: var(--ink);
+  font-size: 11px;
+  font-weight: 650;
+  font-family: var(--font-body);
+}
+
+.wi-column,
+.wi-stack-bar {
+  stroke: none;
+}
+
+.wi-chart .trend-tooltip {
+  white-space: pre;
+  line-height: 1.35;
 }
 
 .chart-card {
@@ -729,6 +864,10 @@ h1 {
   .metrics-row-2 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .charts-grid-2 {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 800px) {
@@ -746,6 +885,7 @@ h1 {
 
   .sidebar-nav {
     flex-direction: row;
+    flex-wrap: wrap;
   }
 
   .nav-link {

@@ -5,6 +5,7 @@ import { readCache, writeCache } from "./cache.js";
 import { computeMetrics } from "./metrics.js";
 import { computeTrend } from "./trend.js";
 import { computeRepoSummaries } from "./repos.js";
+import { computeWorkItems } from "./workItems.js";
 import { getWorkItemsPage, getPullRequestsPage } from "./details.js";
 import { fetchClosedWorkItems } from "./sources/adoWorkItems.js";
 import { fetchPullRequests } from "./sources/adoPullRequests.js";
@@ -67,6 +68,16 @@ app.get("/api/repos", (req, res) => {
   const filters = readDateFilters(req);
   res.json({
     repos: computeRepoSummaries(cache, filters),
+    refreshing: refreshInProgress,
+    cutDate: cache?.cutDate || config.cutDate,
+  });
+});
+
+app.get("/api/work-items", (req, res) => {
+  const cache = readCache();
+  const filters = readDateFilters(req);
+  res.json({
+    workItems: computeWorkItems(cache, filters),
     refreshing: refreshInProgress,
     cutDate: cache?.cutDate || config.cutDate,
   });

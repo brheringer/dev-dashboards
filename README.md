@@ -102,6 +102,8 @@ Defaults: start = `cutDate` from config/cache, end = today. **Clear dates** remo
 - `GET /api/metrics?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD` — aggregated metrics from local cache
 - `GET /api/details/work-items?startDate=&endDate=&page=&pageSize=` — paginated work items (10/25/50/100/500)
 - `GET /api/details/pull-requests?startDate=&endDate=&page=&pageSize=` — paginated pull requests
+- `GET /api/repos?startDate=&endDate=` — pull requests, lines of code, and coverage per repository
+- `GET /api/work-items?startDate=&endDate=` — work-item totals and accumulated daily counts by type
 - `POST /api/refresh?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD` — fetch remote data, overwrite cache, return metrics
 
 ## Project layout
@@ -114,6 +116,7 @@ src/
   config.js
   cache.js
   metrics.js
+  workItems.js
   sources/
     adoClient.js
     adoWorkItems.js
@@ -123,6 +126,7 @@ public/
   index.html
   styles.css
   app.js
+  workItemsCharts.js
 data/
   cache.json   # generated, gitignored
 ```

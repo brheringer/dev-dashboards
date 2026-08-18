@@ -1,6 +1,12 @@
 import { attachDatePresetMenus, attachRangePresetMenus } from "./datePresetMenu.js";
 import { savePageDates, loadPageDates } from "./dateStorage.js";
 import { renderTrendChart } from "./trendChart.js";
+import {
+  renderPieChart,
+  renderColumnChart,
+  renderMultiLineChart,
+  renderStackedColumnChart,
+} from "./workItemsCharts.js";
 
 const refreshBtn = document.getElementById("refreshBtn");
 const clearFiltersBtn = document.getElementById("clearFiltersBtn");
@@ -110,6 +116,29 @@ const reposTableCard = document.getElementById("reposTableCard");
 const reposBody = document.getElementById("reposBody");
 const reposErrorEl = document.getElementById("reposError");
 
+const wiRefreshBtn = document.getElementById("wiRefreshBtn");
+const wiClearFiltersBtn = document.getElementById("wiClearFiltersBtn");
+const wiStartDateInput = document.getElementById("wiStartDate");
+const wiEndDateInput = document.getElementById("wiEndDate");
+const wiStatusEl = document.getElementById("wiStatus");
+const wiEmptyState = document.getElementById("wiEmptyState");
+const wiResults = document.getElementById("wiResults");
+const wiErrorEl = document.getElementById("wiError");
+const wiPieChart = document.getElementById("wiPieChart");
+const wiColumnChart = document.getElementById("wiColumnChart");
+const wiLineChart = document.getElementById("wiLineChart");
+const wiStackedChart = document.getElementById("wiStackedChart");
+const wiChartTabs = {
+  total: document.getElementById("wiTabTotal"),
+  accDaily: document.getElementById("wiTabAccDaily"),
+  accStacked: document.getElementById("wiTabAccStacked"),
+};
+const wiChartPanels = {
+  total: document.getElementById("wiPanelTotal"),
+  accDaily: document.getElementById("wiPanelAccDaily"),
+  accStacked: document.getElementById("wiPanelAccStacked"),
+};
+
 function metricSet(prefix) {
   return {
     userStories: document.getElementById(`${prefix}-userStories`),
@@ -134,6 +163,7 @@ const comparisonSets = {
 
 const PAGE_DATE_INPUTS = {
   "dev-metrics": [startDateInput, endDateInput],
+  "work-items": [wiStartDateInput, wiEndDateInput],
   comparison: [cmpStartDateInput, cmpEndDateInput, cmpStartDate2Input, cmpEndDate2Input],
   trend: [trendStartDateInput, trendEndDateInput],
   repos: [reposStartDateInput, reposEndDateInput],
@@ -152,8 +182,11 @@ let latestRequestId = 0;
 let latestComparisonRequestId = 0;
 let latestTrendRequestId = 0;
 let latestReposRequestId = 0;
+let latestWorkItemsRequestId = 0;
 let lastTrend = null;
+let lastWorkItems = null;
 let activeTab = "workItems";
+let activeWiChartTab = "total";
 
 function formatNumber(value) {
   return new Intl.NumberFormat().format(value);
@@ -221,6 +254,13 @@ function getFilters() {
   };
 }
 
+function getWorkItemsFilters() {
+  return {
+    startDate: wiStartDateInput.value || null,
+    endDate: wiEndDateInput.value || null,
+  };
+}
+
 function getReposFilters() {
   return {
     startDate: reposStartDateInput.value || null,
@@ -273,7 +313,7 @@ function setError(message) {
 }
 
 function setRefreshing(isRefreshing) {
-  for (const btn of [refreshBtn, cmpRefreshBtn, trendRefreshBtn, reposRefreshBtn]) {
+  for (const btn of [refreshBtn, cmpRefreshBtn, trendRefreshBtn, reposRefreshBtn, wiRefreshBtn]) {
     btn.disabled = isRefreshing;
     btn.textContent = isRefreshing ? "Refreshing…" : "Refresh data";
   }
@@ -431,6 +471,67 @@ function renderRepos(data) {
   }
 
   reposStatusEl.textContent = `Last refreshed: ${formatDateTime(data.fetchedAt)} · Filtered ${rangeLabel(data)}`;
+}
+
+function setWorkItemsError(message) {
+  if (!message) {
+    wiErrorEl.classList.add("hidden");
+    wiErrorEl.textContent = "";
+    return;
+  }
+  wiErrorEl.textContent = message;
+  wiErrorEl.classList.remove("hidden");
+}
+
+function paintWorkItemsCharts(data) {
+  const emptyMessage = "No work items in this date range.";
+  const totals = data.totals || {};
+  const points = data.points || [];
+
+  if (activeWiChartTab === "total") {
+    renderPieChart(wiPieChart, { totals, emptyMessage });
+    renderColumnChart(wiColumnChart, { totals, emptyMessage });
+    return;
+  }
+  if (activeWiChartTab === "accDaily") {
+    renderMultiLineChart(wiLineChart, { points, emptyMessage });
+    return;
+  }
+  renderStackedColumnChart(wiStackedChart, { points, emptyMessage });
+}
+
+function setWorkItemsChartTab(tabId) {
+  activeWiChartTab = wiChartTabs[tabId] ? tabId : "total";
+  for (const [key, tab] of Object.entries(wiChartTabs)) {
+    const selected = key === activeWiChartTab;
+    tab.classList.toggle("active", selected);
+    tab.setAttribute("aria-selected", selected ? "true" : "false");
+    wiChartPanels[key].classList.toggle("hidden", !selected);
+    wiChartPanels[key].hidden = !selected;
+  }
+  if (lastWorkItems) {
+    requestAnimationFrame(() => paintWorkItemsCharts(lastWorkItems));
+  }
+}
+
+function renderWorkItemsDashboard(data) {
+  lastWorkItems = data;
+  wiResults.classList.remove("is-stale");
+
+  if (!data?.hasData) {
+    wiResults.classList.add("hidden");
+    wiEmptyState.classList.remove("hidden");
+    wiStatusEl.textContent = "No cached data loaded yet.";
+    return;
+  }
+
+  wiEmptyState.classList.add("hidden");
+  wiResults.classList.remove("hidden");
+  const isVisible = !document.getElementById("dashboard-work-items").classList.contains("hidden");
+  if (isVisible) {
+    requestAnimationFrame(() => paintWorkItemsCharts(data));
+  }
+  wiStatusEl.textContent = `Last refreshed: ${formatDateTime(data.fetchedAt)} · Filtered ${rangeLabel(data)}`;
 }
 
 function setTrendError(message) {
@@ -681,6 +782,22 @@ function reloadOpenTables({ resetPage = true } = {}) {
   });
 }
 
+async function applyWorkItemsFilters() {
+  const requestId = ++latestWorkItemsRequestId;
+  setWorkItemsError("");
+  wiResults.classList.add("is-stale");
+
+  const response = await fetch(`/api/work-items${buildQuery({}, getWorkItemsFilters())}`);
+  if (!response.ok) {
+    throw new Error("Failed to load work item charts from cache.");
+  }
+
+  const data = await response.json();
+  if (requestId !== latestWorkItemsRequestId) return;
+
+  renderWorkItemsDashboard(data.workItems);
+}
+
 async function applyReposFilters() {
   const requestId = ++latestReposRequestId;
   setReposError("");
@@ -761,6 +878,7 @@ async function applyFilters() {
     cmpStatusEl.textContent = "Refresh in progress…";
     trendStatusEl.textContent = "Refresh in progress…";
     reposStatusEl.textContent = "Refresh in progress…";
+    wiStatusEl.textContent = "Refresh in progress…";
   }
 }
 
@@ -770,14 +888,17 @@ async function refreshData() {
   setCmpError("");
   setTrendError("");
   setReposError("");
+  setWorkItemsError("");
   const previousStatus = statusEl.textContent;
   const previousCmpStatus = cmpStatusEl.textContent;
   const previousTrendStatus = trendStatusEl.textContent;
   const previousReposStatus = reposStatusEl.textContent;
+  const previousWiStatus = wiStatusEl.textContent;
   statusEl.textContent = "Refreshing from Azure DevOps and SonarCloud…";
   cmpStatusEl.textContent = "Refreshing from Azure DevOps and SonarCloud…";
   trendStatusEl.textContent = "Refreshing from Azure DevOps and SonarCloud…";
   reposStatusEl.textContent = "Refreshing from Azure DevOps and SonarCloud…";
+  wiStatusEl.textContent = "Refreshing from Azure DevOps and SonarCloud…";
 
   try {
     const response = await fetch(`/api/refresh${buildQuery()}`, { method: "POST" });
@@ -788,21 +909,29 @@ async function refreshData() {
     latestRequestId += 1;
     renderMetrics(data.metrics);
     reloadOpenTables({ resetPage: true });
-    await Promise.all([applyComparisonFilters(), applyTrendFilters(), applyReposFilters()]);
+    await Promise.all([
+      applyComparisonFilters(),
+      applyTrendFilters(),
+      applyReposFilters(),
+      applyWorkItemsFilters(),
+    ]);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Refresh failed.";
     setError(message);
     setCmpError(message);
     setTrendError(message);
     setReposError(message);
+    setWorkItemsError(message);
     statusEl.textContent = previousStatus;
     cmpStatusEl.textContent = previousCmpStatus;
     trendStatusEl.textContent = previousTrendStatus;
     reposStatusEl.textContent = previousReposStatus;
+    wiStatusEl.textContent = previousWiStatus;
     metricsGrid.classList.remove("is-stale");
     cmpMetricsGrid.classList.remove("is-stale");
     trendResults.classList.remove("is-stale");
     reposTableCard.classList.remove("is-stale");
+    wiResults.classList.remove("is-stale");
   } finally {
     setRefreshing(false);
   }
@@ -835,6 +964,11 @@ function onTrendFiltersChanged() {
   reloadTrendMetrics();
 }
 
+function onWorkItemsFiltersChanged() {
+  persistPageDates("work-items");
+  reloadWorkItems();
+}
+
 function onReposFiltersChanged() {
   persistPageDates("repos");
   reloadRepos();
@@ -858,6 +992,13 @@ function reloadTrendMetrics() {
   applyTrendFilters().catch((error) => {
     trendResults.classList.remove("is-stale");
     setTrendError(error instanceof Error ? error.message : "Failed to apply filters.");
+  });
+}
+
+function reloadWorkItems() {
+  applyWorkItemsFilters().catch((error) => {
+    wiResults.classList.remove("is-stale");
+    setWorkItemsError(error instanceof Error ? error.message : "Failed to apply filters.");
   });
 }
 
@@ -888,6 +1029,12 @@ function clearTrendFilters() {
   onTrendFiltersChanged();
 }
 
+function clearWorkItemsFilters() {
+  wiStartDateInput.value = "";
+  wiEndDateInput.value = "";
+  onWorkItemsFiltersChanged();
+}
+
 function clearReposFilters() {
   reposStartDateInput.value = "";
   reposEndDateInput.value = "";
@@ -910,11 +1057,14 @@ async function init() {
         trendStartDateInput.value = cutDate;
         reposStartDateInput.min = cutDate;
         reposStartDateInput.value = cutDate;
+        wiStartDateInput.min = cutDate;
+        wiStartDateInput.value = cutDate;
       }
       endDateInput.value = today;
       cmpEndDateInput.value = today;
       trendEndDateInput.value = today;
       reposEndDateInput.value = today;
+      wiEndDateInput.value = today;
       const lastYear = String(Number(today.slice(0, 4)) - 1);
       cmpStartDate2Input.value = `${lastYear}-01-01`;
       cmpEndDate2Input.value = `${lastYear}-12-31`;
@@ -924,6 +1074,7 @@ async function init() {
   }
 
   restorePageDates("dev-metrics");
+  restorePageDates("work-items");
   restorePageDates("comparison");
   restorePageDates("trend");
   restorePageDates("repos");
@@ -931,6 +1082,7 @@ async function init() {
   datesReady = true;
   await Promise.all([
     applyFilters(),
+    applyWorkItemsFilters(),
     applyComparisonFilters(),
     applyTrendFilters(),
     applyReposFilters(),
@@ -941,10 +1093,12 @@ refreshBtn.addEventListener("click", refreshData);
 cmpRefreshBtn.addEventListener("click", refreshData);
 trendRefreshBtn.addEventListener("click", refreshData);
 reposRefreshBtn.addEventListener("click", refreshData);
+wiRefreshBtn.addEventListener("click", refreshData);
 clearFiltersBtn.addEventListener("click", clearFilters);
 cmpClearFiltersBtn.addEventListener("click", clearComparisonFilters);
 trendClearFiltersBtn.addEventListener("click", clearTrendFilters);
 reposClearFiltersBtn.addEventListener("click", clearReposFilters);
+wiClearFiltersBtn.addEventListener("click", clearWorkItemsFilters);
 startDateInput.addEventListener("change", onFiltersChanged);
 endDateInput.addEventListener("change", onFiltersChanged);
 cmpStartDateInput.addEventListener("change", onComparisonFiltersChanged);
@@ -956,6 +1110,12 @@ trendEndDateInput.addEventListener("change", onTrendFiltersChanged);
 trendMetricSelect.addEventListener("change", onTrendFiltersChanged);
 reposStartDateInput.addEventListener("change", onReposFiltersChanged);
 reposEndDateInput.addEventListener("change", onReposFiltersChanged);
+wiStartDateInput.addEventListener("change", onWorkItemsFiltersChanged);
+wiEndDateInput.addEventListener("change", onWorkItemsFiltersChanged);
+
+for (const [key, tab] of Object.entries(wiChartTabs)) {
+  tab.addEventListener("click", () => setWorkItemsChartTab(key));
+}
 
 tabs.workItems.addEventListener("click", () => setActiveTab("workItems"));
 tabs.pullRequests.addEventListener("click", () => setActiveTab("pullRequests"));
@@ -996,6 +1156,10 @@ const DASHBOARDS = {
   "dev-metrics": {
     title: "Klir Dev Metrics by Heringer",
     view: document.getElementById("dashboard-dev-metrics"),
+  },
+  "work-items": {
+    title: "Klir Work Items by Heringer",
+    view: document.getElementById("dashboard-work-items"),
   },
   comparison: {
     title: "Klir Comparison by Heringer",
@@ -1040,7 +1204,10 @@ function showDashboard(id) {
     if (lastTrend) renderTrend(lastTrend);
     reloadTrendMetrics();
   } else if (dashboardId === "repos") reloadRepos();
-  else reloadDevMetrics();
+  else if (dashboardId === "work-items") {
+    if (lastWorkItems) renderWorkItemsDashboard(lastWorkItems);
+    reloadWorkItems();
+  } else reloadDevMetrics();
 }
 
 for (const link of navLinks) {
@@ -1060,6 +1227,7 @@ attachRangePresetMenus({
   comparisonClearBtn: cmpClearFiltersBtn,
   trendClearBtn: trendClearFiltersBtn,
   reposClearBtn: reposClearFiltersBtn,
+  workItemsClearBtn: wiClearFiltersBtn,
   onDevMetricsRange: ({ start, end }) => {
     startDateInput.value = start;
     endDateInput.value = end;
@@ -1081,6 +1249,11 @@ attachRangePresetMenus({
     reposStartDateInput.value = start;
     reposEndDateInput.value = end;
     onReposFiltersChanged();
+  },
+  onWorkItemsRange: ({ start, end }) => {
+    wiStartDateInput.value = start;
+    wiEndDateInput.value = end;
+    onWorkItemsFiltersChanged();
   },
 });
 
