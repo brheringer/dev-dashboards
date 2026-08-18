@@ -89,12 +89,14 @@ const trendEndDateInput = document.getElementById("trendEndDate");
 const trendMetricSelect = document.getElementById("trendMetric");
 const trendStatusEl = document.getElementById("trendStatus");
 const trendEmptyState = document.getElementById("trendEmptyState");
-const trendChartCard = document.getElementById("trendChartCard");
+const trendResults = document.getElementById("trendResults");
 const trendChartEl = document.getElementById("trendChart");
 const trendErrorEl = document.getElementById("trendError");
 const trendMetricTitle = document.getElementById("trendMetricTitle");
 const trendMetricHint = document.getElementById("trendMetricHint");
 const trendMetricValue = document.getElementById("trendMetricValue");
+const trendFirstDerivative = document.getElementById("trendFirstDerivative");
+const trendSecondDerivative = document.getElementById("trendSecondDerivative");
 const TREND_METRIC_KEY = "klir.dashboard-trend.metric";
 
 function metricSet(prefix) {
@@ -378,22 +380,60 @@ function formatTrendValue(value, unit, { compact = false } = {}) {
   return formatNumber(value);
 }
 
+function formatTrendDerivative(value, unit, order) {
+  if (value === null || value === undefined || !Number.isFinite(Number(value))) return "—";
+  const suffix = unit === "percent"
+    ? order === 2 ? " pp/day²" : " pp/day"
+    : order === 2 ? " / day²" : " / day";
+  const abs = Math.abs(Number(value));
+  const digits = abs >= 100 ? 1 : abs >= 1 ? 2 : 4;
+  const formatted = abs.toLocaleString(undefined, {
+    maximumFractionDigits: digits,
+    minimumFractionDigits: 0,
+  });
+  if (value > 0) return `+${formatted}${suffix}`;
+  if (value < 0) return `−${formatted}${suffix}`;
+  return `${formatted}${suffix}`;
+}
+
+function setSignedValue(el, value, formatted) {
+  el.classList.remove("up", "down", "flat");
+  if (value === null || value === undefined || !Number.isFinite(Number(value))) {
+    el.textContent = "—";
+    return;
+  }
+  el.textContent = formatted;
+  if (value > 0) el.classList.add("up");
+  else if (value < 0) el.classList.add("down");
+  else el.classList.add("flat");
+}
+
 function renderTrend(trend) {
   lastTrend = trend;
-  trendChartCard.classList.remove("is-stale");
+  trendResults.classList.remove("is-stale");
 
   if (!trend?.hasData) {
-    trendChartCard.classList.add("hidden");
+    trendResults.classList.add("hidden");
     trendEmptyState.classList.remove("hidden");
     trendStatusEl.textContent = "No cached data loaded yet.";
     return;
   }
 
   trendEmptyState.classList.add("hidden");
-  trendChartCard.classList.remove("hidden");
+  trendResults.classList.remove("hidden");
   trendMetricTitle.textContent = trend.metricLabel || "Trend";
   trendMetricHint.textContent = trend.hint || "";
   trendMetricValue.textContent = formatTrendValue(trend.total, trend.unit);
+  setSignedValue(
+    trendFirstDerivative,
+    trend.firstDerivative,
+    formatTrendDerivative(trend.firstDerivative, trend.unit, 1)
+  );
+  setSignedValue(
+    trendSecondDerivative,
+    trend.secondDerivative,
+    formatTrendDerivative(trend.secondDerivative, trend.unit, 2)
+  );
 
   const isVisible = !document.getElementById("dashboard-trend").classList.contains("hidden");
   if (isVisible) {
@@ -569,7 +609,7 @@ function reloadOpenTables({ resetPage = true } = {}) {
 async function applyTrendFilters() {
   const requestId = ++latestTrendRequestId;
   setTrendError("");
-  trendChartCard.classList.add("is-stale");
+  trendResults.classList.add("is-stale");
 
   const filters = getTrendFilters();
   const response = await fetch(
@@ -664,7 +704,7 @@ async function refreshData() {
     trendStatusEl.textContent = previousTrendStatus;
     metricsGrid.classList.remove("is-stale");
     cmpMetricsGrid.classList.remove("is-stale");
-    trendChartCard.classList.remove("is-stale");
+    trendResults.classList.remove("is-stale");
   } finally {
     setRefreshing(false);
   }
@@ -713,7 +753,7 @@ function reloadComparisonMetrics() {
 
 function reloadTrendMetrics() {
   applyTrendFilters().catch((error) => {
-    trendChartCard.classList.remove("is-stale");
+    trendResults.classList.remove("is-stale");
     setTrendError(error instanceof Error ? error.message : "Failed to apply filters.");
   });
 }

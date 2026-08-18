@@ -397,15 +397,29 @@
         <p>No local data yet. Click <strong>Refresh data</strong> to load from Azure DevOps and SonarCloud.</p>
       </section>
 
-      <section id="trendChartCard" class="chart-card hidden">
-        <div class="chart-card-head">
-          <div>
-            <h2 id="trendMetricTitle">Story points sum</h2>
-            <p id="trendMetricHint" class="metric-hint"></p>
+      <section id="trendResults" class="trend-results hidden">
+        <section id="trendChartCard" class="chart-card">
+          <div class="chart-card-head">
+            <div>
+              <h2 id="trendMetricTitle">Story points sum</h2>
+              <p id="trendMetricHint" class="metric-hint"></p>
+            </div>
+            <p id="trendMetricValue" class="value">—</p>
           </div>
-          <p id="trendMetricValue" class="value">—</p>
+          <div id="trendChart" class="trend-chart" aria-label="Trend line chart"></div>
+        </section>
+        <div class="metrics-row metrics-row-2">
+          <article class="metric">
+            <h2>1st derivative</h2>
+            <p id="trendFirstDerivative" class="value">—</p>
+            <p class="metric-hint">Average daily change of the curve</p>
+          </article>
+          <article class="metric">
+            <h2>2nd derivative</h2>
+            <p id="trendSecondDerivative" class="value">—</p>
+            <p class="metric-hint">Acceleration of the fitted curve</p>
+          </article>
         </div>
-        <div id="trendChart" class="trend-chart" aria-label="Trend line chart"></div>
       </section>
 
       <p id="trendError" class="error hidden"></p>

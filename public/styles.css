@@ -395,6 +395,14 @@ h1 {
   color: var(--ink);
 }
 
+.value.up {
+  color: #3dba7a;
+}
+
+.value.down {
+  color: #f07070;
+}
+
 .delta {
   margin: 0.45rem 0 0;
   font-size: 0.95rem;
@@ -422,9 +430,16 @@ h1 {
 }
 
 .metrics.is-stale,
-.chart-card.is-stale {
+.chart-card.is-stale,
+.trend-results.is-stale {
   opacity: 0.55;
   transition: opacity 0.12s ease;
+}
+
+.trend-results {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
 
 .chart-card {
