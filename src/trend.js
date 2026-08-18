@@ -1,5 +1,5 @@
 import { toBoundDate, isWithinRange } from "./details.js";
-import { aggregateCode, hasTechDebtTag } from "./metrics.js";
+import { aggregateCode, hasSprintBugTag, hasTechDebtTag } from "./metrics.js";
 
 export const TREND_METRICS = {
   storyPoints: {
@@ -20,11 +20,17 @@ export const TREND_METRICS = {
     unit: "count",
     hint: "Accumulated by work-item closed date in the selected range.",
   },
-  bugs: {
-    label: "Bug count",
+  sprintBugs: {
+    label: "Sprint bug count",
     kind: "cumulative",
     unit: "count",
-    hint: "Accumulated by work-item closed date in the selected range.",
+    hint: "Closed Bug items tagged sprint-bug, accumulated by closed date in the selected range.",
+  },
+  usBugs: {
+    label: "US bug count",
+    kind: "cumulative",
+    unit: "count",
+    hint: "Closed Bug items without the sprint-bug tag, accumulated by closed date in the selected range.",
   },
   pullRequests: {
     label: "Pull request count",
@@ -119,8 +125,11 @@ function eventIncrement(metricId, workItem) {
     const points = Number(workItem.storyPoints);
     return Number.isFinite(points) ? points : 0;
   }
-  if (metricId === "bugs") {
-    return workItem.workItemType === "Bug" ? 1 : 0;
+  if (metricId === "sprintBugs") {
+    return workItem.workItemType === "Bug" && hasSprintBugTag(workItem.tags) ? 1 : 0;
+  }
+  if (metricId === "usBugs") {
+    return workItem.workItemType === "Bug" && !hasSprintBugTag(workItem.tags) ? 1 : 0;
   }
   if (metricId === "techDebts") {
     return workItem.workItemType === "Task" && hasTechDebtTag(workItem.tags) ? 1 : 0;

@@ -58,7 +58,7 @@
       </section>
 
       <section id="metricsGrid" class="metrics hidden">
-        <div class="metrics-row metrics-row-5">
+        <div class="metrics-row metrics-row-6">
           <article class="metric">
             <h2>Story Points</h2>
             <p id="storyPoints" class="value">—</p>
@@ -72,8 +72,12 @@
             <p id="techDebts" class="value">—</p>
           </article>
           <article class="metric">
-            <h2>Bugs</h2>
-            <p id="bugs" class="value">—</p>
+            <h2>Sprint Bugs</h2>
+            <p id="sprintBugs" class="value">—</p>
+          </article>
+          <article class="metric">
+            <h2>US Bugs</h2>
+            <p id="usBugs" class="value">—</p>
           </article>
           <article class="metric">
             <h2>Pull Requests</h2>
@@ -291,16 +295,30 @@
         </div>
         <div class="metrics-row metrics-row-compare">
           <article class="metric">
-            <h2>Bugs</h2>
-            <p id="cmp1-bugs" class="value">—</p>
+            <h2>Sprint Bugs</h2>
+            <p id="cmp1-sprintBugs" class="value">—</p>
           </article>
-          <div class="compare-variance" id="cmpVar-bugs">
+          <div class="compare-variance" id="cmpVar-sprintBugs">
             <span class="compare-arrow" aria-hidden="true">→</span>
             <span class="compare-variance-value">—</span>
           </div>
           <article class="metric">
-            <h2>Bugs</h2>
-            <p id="cmp2-bugs" class="value">—</p>
+            <h2>Sprint Bugs</h2>
+            <p id="cmp2-sprintBugs" class="value">—</p>
+          </article>
+        </div>
+        <div class="metrics-row metrics-row-compare">
+          <article class="metric">
+            <h2>US Bugs</h2>
+            <p id="cmp1-usBugs" class="value">—</p>
+          </article>
+          <div class="compare-variance" id="cmpVar-usBugs">
+            <span class="compare-arrow" aria-hidden="true">→</span>
+            <span class="compare-variance-value">—</span>
+          </div>
+          <article class="metric">
+            <h2>US Bugs</h2>
+            <p id="cmp2-usBugs" class="value">—</p>
           </article>
         </div>
         <div class="metrics-row metrics-row-compare">
@@ -377,7 +395,8 @@
             <option value="storyPoints">Story points sum</option>
             <option value="userStories">User stories count</option>
             <option value="techDebts">Tech debt count</option>
-            <option value="bugs">Bug count</option>
+            <option value="sprintBugs">Sprint bug count</option>
+            <option value="usBugs">US bug count</option>
             <option value="pullRequests">Pull request count</option>
             <option value="linesOfCode">Lines of code sum</option>
             <option value="coverage">Coverage</option>

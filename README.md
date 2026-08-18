@@ -8,7 +8,8 @@ Small Node.js app that loads delivery metrics from **Azure DevOps** and **SonarC
 |--------|--------|------|
 | User Stories | Azure DevOps | Closed work items of type `User Story` since cut date |
 | Story Points | Azure DevOps | Sum of story points on those user stories |
-| Bugs | Azure DevOps | Closed work items of type `Bug` since cut date |
+| Sprint Bugs | Azure DevOps | Closed `Bug` items tagged `sprint-bug` since cut date |
+| US Bugs | Azure DevOps | Closed `Bug` items without the `sprint-bug` tag since cut date |
 | Tech Debts | Azure DevOps | Closed `Task` items tagged `tech-debt` since cut date |
 | Pull Requests | Azure DevOps | PRs created since cut date in configured repositories |
 | Lines of Code | SonarCloud | Sum of `ncloc` across configured projects |

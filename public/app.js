@@ -15,7 +15,8 @@ const dataAccordion = document.getElementById("dataAccordion");
 const fields = {
   userStories: document.getElementById("userStories"),
   storyPoints: document.getElementById("storyPoints"),
-  bugs: document.getElementById("bugs"),
+  sprintBugs: document.getElementById("sprintBugs"),
+  usBugs: document.getElementById("usBugs"),
   techDebts: document.getElementById("techDebts"),
   pullRequests: document.getElementById("pullRequests"),
   linesOfCode: document.getElementById("linesOfCode"),
@@ -113,7 +114,8 @@ function metricSet(prefix) {
   return {
     userStories: document.getElementById(`${prefix}-userStories`),
     storyPoints: document.getElementById(`${prefix}-storyPoints`),
-    bugs: document.getElementById(`${prefix}-bugs`),
+    sprintBugs: document.getElementById(`${prefix}-sprintBugs`),
+    usBugs: document.getElementById(`${prefix}-usBugs`),
     techDebts: document.getElementById(`${prefix}-techDebts`),
     pullRequests: document.getElementById(`${prefix}-pullRequests`),
     linesOfCode: document.getElementById(`${prefix}-linesOfCode`),
@@ -280,7 +282,8 @@ function setRefreshing(isRefreshing) {
 function fillMetricSet(set, metrics) {
   set.userStories.textContent = formatNumber(metrics.userStories);
   set.storyPoints.textContent = formatNumber(metrics.storyPoints);
-  set.bugs.textContent = formatNumber(metrics.bugs);
+  set.sprintBugs.textContent = formatNumber(metrics.sprintBugs);
+  set.usBugs.textContent = formatNumber(metrics.usBugs);
   set.techDebts.textContent = formatNumber(metrics.techDebts);
   set.pullRequests.textContent = formatNumber(metrics.pullRequests);
   set.linesOfCode.textContent = formatNumber(metrics.linesOfCode);
@@ -332,7 +335,8 @@ const COMPARISON_VARIANCE_KEYS = [
   "storyPoints",
   "userStories",
   "techDebts",
-  "bugs",
+  "sprintBugs",
+  "usBugs",
   "pullRequests",
   "linesOfCode",
   "coverage",
@@ -361,7 +365,8 @@ function renderMetrics(metrics) {
     {
       userStories: fields.userStories,
       storyPoints: fields.storyPoints,
-      bugs: fields.bugs,
+      sprintBugs: fields.sprintBugs,
+      usBugs: fields.usBugs,
       techDebts: fields.techDebts,
       pullRequests: fields.pullRequests,
       linesOfCode: fields.linesOfCode,

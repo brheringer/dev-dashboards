@@ -1,4 +1,5 @@
 const TECH_DEBT_TAG = "tech-debt";
+const SPRINT_BUG_TAG = "sprint-bug";
 
 function parseTags(tags) {
   if (!tags) return [];
@@ -9,8 +10,16 @@ function parseTags(tags) {
     .filter(Boolean);
 }
 
+function hasTag(tags, expected) {
+  return parseTags(tags).some((tag) => tag.toLowerCase() === expected);
+}
+
 export function hasTechDebtTag(tags) {
-  return parseTags(tags).some((tag) => tag.toLowerCase() === TECH_DEBT_TAG);
+  return hasTag(tags, TECH_DEBT_TAG);
+}
+
+export function hasSprintBugTag(tags) {
+  return hasTag(tags, SPRINT_BUG_TAG);
 }
 
 /**
@@ -122,7 +131,8 @@ export function computeMetrics(cache, filters = {}) {
       cutDate: null,
       userStories: 0,
       storyPoints: 0,
-      bugs: 0,
+      sprintBugs: 0,
+      usBugs: 0,
       techDebts: 0,
       pullRequests: 0,
       linesOfCode: 0,
@@ -146,7 +156,12 @@ export function computeMetrics(cache, filters = {}) {
   const sonar = cache.sonar || [];
 
   const userStories = workItems.filter((wi) => wi.workItemType === "User Story");
-  const bugs = workItems.filter((wi) => wi.workItemType === "Bug");
+  const sprintBugs = workItems.filter(
+    (wi) => wi.workItemType === "Bug" && hasSprintBugTag(wi.tags)
+  );
+  const usBugs = workItems.filter(
+    (wi) => wi.workItemType === "Bug" && !hasSprintBugTag(wi.tags)
+  );
   const techDebts = workItems.filter(
     (wi) => wi.workItemType === "Task" && hasTechDebtTag(wi.tags)
   );
@@ -191,7 +206,8 @@ export function computeMetrics(cache, filters = {}) {
     cutDate: cache.cutDate || null,
     userStories: userStories.length,
     storyPoints: Math.round(storyPoints * 100) / 100,
-    bugs: bugs.length,
+    sprintBugs: sprintBugs.length,
+    usBugs: usBugs.length,
     techDebts: techDebts.length,
     pullRequests: pullRequests.length,
     linesOfCode: atEnd.ncloc,
