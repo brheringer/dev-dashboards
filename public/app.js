@@ -1,6 +1,7 @@
 import { attachDatePresetMenus, attachRangePresetMenus } from "./datePresetMenu.js";
 import { savePageDates, loadPageDates } from "./dateStorage.js";
 import { renderTrendChart } from "./trendChart.js";
+import { renderDevMetricsChart } from "./devMetricsChart.js";
 import {
   renderPieChart,
   renderColumnChart,
@@ -40,6 +41,13 @@ const emptyState = document.getElementById("emptyState");
 const metricsGrid = document.getElementById("metricsGrid");
 const errorEl = document.getElementById("error");
 const dataAccordion = document.getElementById("dataAccordion");
+const devMetricsYAxisSelect = document.getElementById("devMetricsYAxis");
+const devMetricsXAxisSelect = document.getElementById("devMetricsXAxis");
+const devMetricsChartSection = document.getElementById("devMetricsChartSection");
+const devMetricsChartEl = document.getElementById("devMetricsChart");
+const devMetricsChartTitle = document.getElementById("devMetricsChartTitle");
+const devMetricsChartHint = document.getElementById("devMetricsChartHint");
+const devMetricsChartTotal = document.getElementById("devMetricsChartTotal");
 
 const fields = {
   userStories: document.getElementById("userStories"),
@@ -128,6 +136,8 @@ const trendMetricValue = document.getElementById("trendMetricValue");
 const trendFirstDerivative = document.getElementById("trendFirstDerivative");
 const trendSecondDerivative = document.getElementById("trendSecondDerivative");
 const TREND_METRIC_KEY = "brheringer.dashboard-trend.metric";
+const DEV_METRICS_Y_AXIS_KEY = "brheringer.dashboard-dev-metrics.y-axis";
+const DEV_METRICS_X_AXIS_KEY = "brheringer.dashboard-dev-metrics.x-axis";
 
 const reposClearFiltersBtn = document.getElementById("reposClearFiltersBtn");
 const reposStartDateInput = document.getElementById("reposStartDate");
@@ -218,6 +228,7 @@ function restorePageDates(pageId) {
 }
 
 let latestRequestId = 0;
+let latestDevMetricsChartRequestId = 0;
 let latestComparisonRequestId = 0;
 let latestTrendRequestId = 0;
 let latestReposRequestId = 0;
@@ -284,6 +295,18 @@ function todayIsoDate() {
   const month = String(now.getMonth() + 1).padStart(2, "0");
   const day = String(now.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+function getDevMetricsChartFilters() {
+  const metric = devMetricsYAxisSelect?.value || "storyPoints";
+  const areaPath = metric === "pullRequests" ? null : areaPathSelect?.value || null;
+  return {
+    startDate: startDateInput?.value || null,
+    endDate: endDateInput?.value || null,
+    areaPath,
+    metric,
+    grain: devMetricsXAxisSelect?.value || "daily",
+  };
 }
 
 function getFilters() {
@@ -482,6 +505,50 @@ function renderMetrics(metrics) {
   statusEl.textContent = `Last refreshed: ${formatDateTime(metrics.fetchedAt)} · Filtered ${rangeLabel(metrics)}${
     metrics.areaPath ? ` · ${metrics.areaPath}` : ""
   }`;
+}
+
+const DEV_METRICS_GRAIN_LABELS = {
+  daily: "daily",
+  weekly: "weekly",
+  monthly: "monthly",
+  quarterly: "quarterly",
+  yearly: "yearly",
+};
+
+function renderDevMetricsChartPanel(chart) {
+  if (!devMetricsChartSection) return;
+  devMetricsChartSection.classList.remove("is-stale");
+
+  if (!chart?.hasData) {
+    devMetricsChartSection.classList.add("hidden");
+    return;
+  }
+
+  devMetricsChartSection.classList.remove("hidden");
+  if (devMetricsChartTitle) devMetricsChartTitle.textContent = chart.metricLabel;
+  if (devMetricsChartTotal) {
+    devMetricsChartTotal.textContent = formatNumber(chart.total);
+  }
+  if (devMetricsChartHint) {
+    const grainLabel = DEV_METRICS_GRAIN_LABELS[chart.grain] || chart.grain;
+    const dateField = chart.metric === "pullRequests" ? "creation date" : "closed date";
+    const areaHint =
+      chart.metric === "pullRequests"
+        ? ""
+        : chart.areaPath
+          ? ` · ${chart.areaPath}`
+          : "";
+    devMetricsChartHint.textContent = `${grainLabel} buckets by ${dateField}${areaHint}`;
+  }
+
+  renderDevMetricsChart(devMetricsChartEl, {
+    points: chart.points,
+    metric: chart.metric,
+    metricLabel: chart.metricLabel,
+    grain: chart.grain,
+    unit: chart.unit,
+    emptyMessage: "No data in this date range.",
+  });
 }
 
 function setReposError(message) {
@@ -989,12 +1056,51 @@ async function applyComparisonFilters() {
   renderComparison(data1.metrics, data2.metrics);
 }
 
+async function applyDevMetricsChart() {
+  if (!devMetricsChartSection) return;
+  const requestId = ++latestDevMetricsChartRequestId;
+  devMetricsChartSection.classList.add("is-stale");
+
+  const filters = getDevMetricsChartFilters();
+  const response = await fetch(
+    `/api/dev-metrics/chart${buildQuery(
+      { metric: filters.metric, grain: filters.grain, areaPath: filters.areaPath },
+      filters
+    )}`
+  );
+  if (!response.ok) {
+    throw new Error("Failed to load dev metrics chart from cache.");
+  }
+
+  const data = await response.json();
+  if (requestId !== latestDevMetricsChartRequestId) return;
+
+  renderDevMetricsChartPanel(data.chart);
+}
+
 async function applyFilters() {
   const requestId = ++latestRequestId;
+  const chartRequestId = ++latestDevMetricsChartRequestId;
   setError("");
   metricsGrid.classList.add("is-stale");
+  devMetricsChartSection?.classList.add("is-stale");
 
-  const response = await fetch(`/api/metrics${buildQuery()}`);
+  const chartFilters = getDevMetricsChartFilters();
+  const [response, chartResponse] = await Promise.all([
+    fetch(`/api/metrics${buildQuery()}`),
+    devMetricsChartSection
+      ? fetch(
+          `/api/dev-metrics/chart${buildQuery(
+            {
+              metric: chartFilters.metric,
+              grain: chartFilters.grain,
+              areaPath: chartFilters.areaPath,
+            },
+            chartFilters
+          )}`
+        )
+      : Promise.resolve(null),
+  ]);
   if (!response.ok) {
     throw new Error("Failed to load metrics from cache.");
   }
@@ -1007,6 +1113,16 @@ async function applyFilters() {
   fillAreaPathOptions(data.areaPaths);
   renderMetrics(data.metrics);
   reloadOpenTables({ resetPage: true });
+
+  if (chartResponse) {
+    if (!chartResponse.ok) {
+      throw new Error("Failed to load dev metrics chart from cache.");
+    }
+    const chartData = await chartResponse.json();
+    if (requestId === latestRequestId && chartRequestId === latestDevMetricsChartRequestId) {
+      renderDevMetricsChartPanel(chartData.chart);
+    }
+  }
 
   if (data.refreshing) {
     setRefreshing(true);
@@ -1053,6 +1169,7 @@ async function refreshData() {
     if (reposStatusEl) reposStatusEl.textContent = previousReposStatus;
     if (wiStatusEl) wiStatusEl.textContent = previousWiStatus;
     metricsGrid?.classList.remove("is-stale");
+    devMetricsChartSection?.classList.remove("is-stale");
     cmpMetricsGrid?.classList.remove("is-stale");
     trendResults?.classList.remove("is-stale");
     reposTableCard?.classList.remove("is-stale");
@@ -1070,6 +1187,33 @@ function onFiltersChanged() {
 function onComparisonFiltersChanged() {
   persistPageDates("comparison");
   reloadComparisonMetrics();
+}
+
+function persistDevMetricsChartFilters() {
+  if (devMetricsYAxisSelect) {
+    localStorage.setItem(DEV_METRICS_Y_AXIS_KEY, devMetricsYAxisSelect.value);
+  }
+  if (devMetricsXAxisSelect) {
+    localStorage.setItem(DEV_METRICS_X_AXIS_KEY, devMetricsXAxisSelect.value);
+  }
+}
+
+function restoreDevMetricsChartFilters() {
+  const savedY = localStorage.getItem(DEV_METRICS_Y_AXIS_KEY);
+  if (savedY && devMetricsYAxisSelect) {
+    const valid = [...devMetricsYAxisSelect.options].some((option) => option.value === savedY);
+    if (valid) devMetricsYAxisSelect.value = savedY;
+  }
+  const savedX = localStorage.getItem(DEV_METRICS_X_AXIS_KEY);
+  if (savedX && devMetricsXAxisSelect) {
+    const valid = [...devMetricsXAxisSelect.options].some((option) => option.value === savedX);
+    if (valid) devMetricsXAxisSelect.value = savedX;
+  }
+}
+
+function onDevMetricsChartFiltersChanged() {
+  persistDevMetricsChartFilters();
+  reloadDevMetricsChart();
 }
 
 function persistTrendMetric() {
@@ -1105,7 +1249,15 @@ function onReposFiltersChanged() {
 function reloadDevMetrics() {
   applyFilters().catch((error) => {
     metricsGrid.classList.remove("is-stale");
+    devMetricsChartSection?.classList.remove("is-stale");
     setError(error instanceof Error ? error.message : "Failed to apply filters.");
+  });
+}
+
+function reloadDevMetricsChart() {
+  applyDevMetricsChart().catch((error) => {
+    devMetricsChartSection?.classList.remove("is-stale");
+    setError(error instanceof Error ? error.message : "Failed to load chart.");
   });
 }
 
@@ -1223,6 +1375,7 @@ async function init() {
 
   restorePageDates(currentDashboardId);
   restoreTrendMetric();
+  restoreDevMetricsChartFilters();
   syncTrendAreaPathFilter();
   await reloadCurrentDashboard();
 }
@@ -1272,6 +1425,8 @@ function bindPage() {
   startDateInput?.addEventListener("change", onFiltersChanged);
   endDateInput?.addEventListener("change", onFiltersChanged);
   areaPathSelect?.addEventListener("change", onFiltersChanged);
+  devMetricsYAxisSelect?.addEventListener("change", onDevMetricsChartFiltersChanged);
+  devMetricsXAxisSelect?.addEventListener("change", onDevMetricsChartFiltersChanged);
   cmpStartDateInput?.addEventListener("change", onComparisonFiltersChanged);
   cmpEndDateInput?.addEventListener("change", onComparisonFiltersChanged);
   cmpStartDate2Input?.addEventListener("change", onComparisonFiltersChanged);

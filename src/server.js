@@ -7,6 +7,7 @@ import { computeMetrics } from "./metrics.js";
 import { computeTrend } from "./trend.js";
 import { computeRepoSummaries } from "./repos.js";
 import { computeWorkItems } from "./workItems.js";
+import { computeDevMetricsChart } from "./devMetricsChart.js";
 import { getWorkItemsPage, getPullRequestsPage } from "./details.js";
 import { fetchClosedWorkItems } from "./sources/adoWorkItems.js";
 import { fetchPullRequests } from "./sources/adoPullRequests.js";
@@ -145,6 +146,19 @@ app.get("/api/repos", (req, res) => {
   const filters = readDateFilters(req);
   res.json({
     repos: computeRepoSummaries(cache, filters),
+    refreshing: refreshInProgress,
+    cutDate: cache?.cutDate || config.cutDate,
+  });
+});
+
+app.get("/api/dev-metrics/chart", (req, res) => {
+  const cache = readCache();
+  const filters = readWorkItemsFilters(req);
+  const metric = typeof req.query.metric === "string" ? req.query.metric : "storyPoints";
+  const grain = typeof req.query.grain === "string" ? req.query.grain : "daily";
+  res.json({
+    chart: computeDevMetricsChart(cache, { ...filters, metric, grain }),
+    areaPaths: config.azureDevOps.areaPathsOfInterest,
     refreshing: refreshInProgress,
     cutDate: cache?.cutDate || config.cutDate,
   });

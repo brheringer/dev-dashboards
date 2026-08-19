@@ -180,4 +180,39 @@
           </div>
         </div>
       </details>
+
+      <section class="filters" aria-label="Chart filters">
+        <label class="filter-field">
+          <span>Y axis</span>
+          <select id="devMetricsYAxis">
+            <option value="storyPoints">Story Points</option>
+            <option value="userStories">User Stories</option>
+            <option value="techDebts">Tech Debts</option>
+            <option value="sprintBugs">Sprint Bugs</option>
+            <option value="usBugs">US Bugs</option>
+            <option value="pullRequests">Pull Requests</option>
+          </select>
+        </label>
+        <label class="filter-field">
+          <span>X axis</span>
+          <select id="devMetricsXAxis">
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="monthly">Monthly</option>
+            <option value="quarterly">Quarterly</option>
+            <option value="yearly">Yearly</option>
+          </select>
+        </label>
+      </section>
+
+      <section id="devMetricsChartSection" class="chart-card hidden">
+        <div class="chart-card-head">
+          <div>
+            <h2 id="devMetricsChartTitle">Story Points</h2>
+            <p id="devMetricsChartHint" class="metric-hint"></p>
+          </div>
+          <p id="devMetricsChartTotal" class="value">—</p>
+        </div>
+        <div id="devMetricsChart" class="trend-chart" aria-label="Dev metrics column chart"></div>
+      </section>
     </section>
