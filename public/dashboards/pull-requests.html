@@ -1,0 +1,87 @@
+    <section id="dashboard-pull-requests" class="page dashboard-view">
+      <header class="header">
+        <div>
+          <p class="eyebrow" data-brand-mark>{{branding.author}} / {{branding.product}}</p>
+          <h1>Pull Requests</h1>
+          <p id="prStatus" class="status">Loading…</p>
+        </div>
+      </header>
+
+      <section class="filters" aria-label="Pull request filters">
+        <label class="filter-field">
+          <span>Start date</span>
+          <input id="prStartDate" type="date" />
+        </label>
+        <label class="filter-field">
+          <span>End date</span>
+          <input id="prEndDate" type="date" />
+        </label>
+        <label class="filter-field filter-field-authors">
+          <span>Authors</span>
+          <select id="prAuthors" multiple size="4" aria-label="Filter by author">
+          </select>
+        </label>
+        <label class="filter-field">
+          <span>X axis</span>
+          <select id="prXAxis">
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="monthly">Monthly</option>
+            <option value="quarterly">Quarterly</option>
+            <option value="yearly">Yearly</option>
+          </select>
+        </label>
+        <button id="prClearFiltersBtn" type="button" class="secondary-btn">
+          Clear dates
+        </button>
+      </section>
+
+      <section id="prEmptyState" class="empty hidden">
+        <p>No local data yet. Click <strong>Refresh data</strong> to load from Azure DevOps and SonarCloud.</p>
+      </section>
+
+      <section id="prResults" class="wi-results hidden">
+        <div class="tabs" role="tablist" aria-label="Pull request charts">
+          <button
+            id="prTabLine"
+            type="button"
+            class="tab active"
+            role="tab"
+            aria-selected="true"
+            aria-controls="prPanelLine"
+          >
+            Line
+          </button>
+          <button
+            id="prTabStacked"
+            type="button"
+            class="tab"
+            role="tab"
+            aria-selected="false"
+            aria-controls="prPanelStacked"
+          >
+            Stacked column
+          </button>
+        </div>
+
+        <div id="prPanelLine" class="tab-panel" role="tabpanel">
+          <section class="chart-card">
+            <div class="chart-card-head">
+              <h2>Pull requests by author</h2>
+            </div>
+            <div id="prLineChart" class="wi-chart wi-chart-wide" aria-label="Pull requests line chart by author"></div>
+          </section>
+        </div>
+
+        <div id="prPanelStacked" class="tab-panel hidden" role="tabpanel" hidden>
+          <section class="chart-card">
+            <div class="chart-card-head">
+              <h2>Pull requests by author</h2>
+            </div>
+            <div id="prStackedChart" class="wi-chart wi-chart-wide" aria-label="Pull requests stacked column chart by author"></div>
+          </section>
+        </div>
+      </section>
+
+      <p id="prError" class="error hidden"></p>
+    </section>

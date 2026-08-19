@@ -317,3 +317,11 @@ export function computeDevMetricsChart(cache, filters = {}) {
     total,
   };
 }
+
+export {
+  bucketKey,
+  bucketToChartDate,
+  enumerateBuckets,
+  isoDay,
+  todayIsoDate,
+};

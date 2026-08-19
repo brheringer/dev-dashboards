@@ -12,6 +12,7 @@ import {
 const DASHBOARDS = {
   "dev-metrics": { name: "Dev Metrics", path: "/" },
   "work-items": { name: "Work Items", path: "/work-items" },
+  "pull-requests": { name: "Pull Requests", path: "/pull-requests" },
   comparison: { name: "Comparison", path: "/comparison" },
   trend: { name: "Trend", path: "/trend" },
   repos: { name: "Repos", path: "/repos" },
@@ -183,6 +184,28 @@ const wiChartPanels = {
   monthlyStacked: document.getElementById("wiPanelMonthlyStacked"),
 };
 
+const prClearFiltersBtn = document.getElementById("prClearFiltersBtn");
+const prStartDateInput = document.getElementById("prStartDate");
+const prEndDateInput = document.getElementById("prEndDate");
+const prAuthorsSelect = document.getElementById("prAuthors");
+const prXAxisSelect = document.getElementById("prXAxis");
+const prStatusEl = document.getElementById("prStatus");
+const prEmptyState = document.getElementById("prEmptyState");
+const prResults = document.getElementById("prResults");
+const prErrorEl = document.getElementById("prError");
+const prLineChart = document.getElementById("prLineChart");
+const prStackedChart = document.getElementById("prStackedChart");
+const prChartTabs = {
+  line: document.getElementById("prTabLine"),
+  stacked: document.getElementById("prTabStacked"),
+};
+const prChartPanels = {
+  line: document.getElementById("prPanelLine"),
+  stacked: document.getElementById("prPanelStacked"),
+};
+const PR_X_AXIS_KEY = "brheringer.dashboard-pull-requests.x-axis";
+const PR_AUTHORS_KEY = "brheringer.dashboard-pull-requests.authors";
+
 function metricSet(prefix) {
   return {
     userStories: document.getElementById(`${prefix}-userStories`),
@@ -208,6 +231,7 @@ const comparisonSets = {
 const PAGE_DATE_INPUTS = {
   "dev-metrics": [startDateInput, endDateInput, areaPathSelect],
   "work-items": [wiStartDateInput, wiEndDateInput, wiAreaPathSelect],
+  "pull-requests": [prStartDateInput, prEndDateInput],
   comparison: [
     cmpStartDateInput,
     cmpEndDateInput,
@@ -233,10 +257,13 @@ let latestComparisonRequestId = 0;
 let latestTrendRequestId = 0;
 let latestReposRequestId = 0;
 let latestWorkItemsRequestId = 0;
+let latestPullRequestsRequestId = 0;
 let lastTrend = null;
 let lastWorkItems = null;
+let lastPullRequests = null;
 let activeTab = "workItems";
 let activeWiChartTab = "total";
+let activePrChartTab = "line";
 
 function formatNumber(value) {
   return new Intl.NumberFormat().format(value);
@@ -323,6 +350,33 @@ function getWorkItemsFilters() {
     endDate: wiEndDateInput?.value || null,
     areaPath: wiAreaPathSelect?.value || null,
   };
+}
+
+function getSelectedAuthors(select) {
+  if (!select) return [];
+  return [...select.selectedOptions].map((option) => option.value).filter(Boolean);
+}
+
+function getPullRequestsFilters() {
+  const authors = getSelectedAuthors(prAuthorsSelect);
+  return {
+    startDate: prStartDateInput?.value || null,
+    endDate: prEndDateInput?.value || null,
+    authors: authors.length ? authors : null,
+    grain: prXAxisSelect?.value || "daily",
+  };
+}
+
+function buildPullRequestsQuery(filters = getPullRequestsFilters()) {
+  const params = new URLSearchParams();
+  if (filters.startDate) params.set("startDate", filters.startDate);
+  if (filters.endDate) params.set("endDate", filters.endDate);
+  if (filters.grain) params.set("grain", filters.grain);
+  for (const author of filters.authors || []) {
+    params.append("authors", author);
+  }
+  const query = params.toString();
+  return query ? `?${query}` : "";
 }
 
 function getReposFilters() {
@@ -687,6 +741,115 @@ function renderWorkItemsDashboard(data) {
   }`;
 }
 
+function setPullRequestsError(message) {
+  if (!prErrorEl) return;
+  if (!message) {
+    prErrorEl.classList.add("hidden");
+    prErrorEl.textContent = "";
+    return;
+  }
+  prErrorEl.textContent = message;
+  prErrorEl.classList.remove("hidden");
+}
+
+function pullRequestsAuthorLabel(data) {
+  if (!data?.authors?.length) return "";
+  if (data.authors.length === 1) return ` · ${data.authors[0]}`;
+  return ` · ${data.authors.length} authors`;
+}
+
+function pullRequestsChartOptions(data) {
+  const emptyMessage = "No pull requests in this date range.";
+  return {
+    points: data.points || [],
+    series: data.series || [],
+    totals: data.totals || {},
+    emptyMessage,
+    xGrain: data.grain || "daily",
+    legendTotals: data.totals || {},
+  };
+}
+
+function paintPullRequestsCharts(data) {
+  const options = pullRequestsChartOptions(data);
+  if (activePrChartTab === "line") {
+    renderMultiLineChart(prLineChart, options);
+    return;
+  }
+  renderStackedColumnChart(prStackedChart, options);
+}
+
+function setPullRequestsChartTab(tabId) {
+  activePrChartTab = prChartTabs[tabId] ? tabId : "line";
+  for (const [key, tab] of Object.entries(prChartTabs)) {
+    const selected = key === activePrChartTab;
+    tab?.classList.toggle("active", selected);
+    tab?.setAttribute("aria-selected", selected ? "true" : "false");
+    prChartPanels[key]?.classList.toggle("hidden", !selected);
+    if (prChartPanels[key]) prChartPanels[key].hidden = !selected;
+  }
+  if (lastPullRequests) {
+    requestAnimationFrame(() => paintPullRequestsCharts(lastPullRequests));
+  }
+}
+
+function fillAuthorOptions(authors, selected = []) {
+  if (!prAuthorsSelect) return;
+  const selectedSet = new Set(selected);
+  prAuthorsSelect.replaceChildren();
+  for (const author of authors) {
+    const option = document.createElement("option");
+    option.value = author;
+    option.textContent = author;
+    option.selected = selectedSet.has(author);
+    prAuthorsSelect.appendChild(option);
+  }
+}
+
+function renderPullRequestsDashboard(data) {
+  lastPullRequests = data;
+  prResults?.classList.remove("is-stale");
+
+  if (!data?.hasData) {
+    prResults?.classList.add("hidden");
+    prEmptyState?.classList.remove("hidden");
+    if (prStatusEl) prStatusEl.textContent = "No cached data loaded yet.";
+    return;
+  }
+
+  prEmptyState?.classList.add("hidden");
+  prResults?.classList.remove("hidden");
+  requestAnimationFrame(() => paintPullRequestsCharts(data));
+  if (prStatusEl) {
+    prStatusEl.textContent = `Last refreshed: ${formatDateTime(data.fetchedAt)} · Filtered ${rangeLabel(data)}${pullRequestsAuthorLabel(data)} · ${formatNumber(data.total || 0)} PRs`;
+  }
+}
+
+function persistPullRequestsChartFilters() {
+  if (prXAxisSelect) {
+    localStorage.setItem(PR_X_AXIS_KEY, prXAxisSelect.value);
+  }
+  localStorage.setItem(PR_AUTHORS_KEY, JSON.stringify(getSelectedAuthors(prAuthorsSelect)));
+}
+
+function restorePullRequestsChartFilters() {
+  const savedX = localStorage.getItem(PR_X_AXIS_KEY);
+  if (savedX && prXAxisSelect) {
+    const valid = [...prXAxisSelect.options].some((option) => option.value === savedX);
+    if (valid) prXAxisSelect.value = savedX;
+  }
+  try {
+    const savedAuthors = JSON.parse(localStorage.getItem(PR_AUTHORS_KEY) || "[]");
+    if (Array.isArray(savedAuthors)) {
+      for (const option of prAuthorsSelect?.options || []) {
+        option.selected = savedAuthors.includes(option.value);
+      }
+    }
+  } catch {
+    // Ignore invalid saved author filters.
+  }
+}
+
 function setTrendError(message) {
   if (!trendErrorEl) return;
   if (!message) {
@@ -998,6 +1161,25 @@ async function applyWorkItemsFilters() {
   renderWorkItemsDashboard(data.workItems);
 }
 
+async function applyPullRequestsFilters() {
+  const requestId = ++latestPullRequestsRequestId;
+  setPullRequestsError("");
+  prResults?.classList.add("is-stale");
+
+  const filters = getPullRequestsFilters();
+  const savedAuthors = getSelectedAuthors(prAuthorsSelect);
+  const response = await fetch(`/api/pull-requests${buildPullRequestsQuery(filters)}`);
+  if (!response.ok) {
+    throw new Error("Failed to load pull request charts from cache.");
+  }
+
+  const data = await response.json();
+  if (requestId !== latestPullRequestsRequestId) return;
+
+  fillAuthorOptions(data.pullRequests?.availableAuthors || [], savedAuthors);
+  renderPullRequestsDashboard(data.pullRequests);
+}
+
 async function applyReposFilters() {
   const requestId = ++latestReposRequestId;
   setReposError("");
@@ -1137,16 +1319,19 @@ async function refreshData() {
   setTrendError("");
   setReposError("");
   setWorkItemsError("");
+  setPullRequestsError("");
   const previousStatus = statusEl?.textContent;
   const previousCmpStatus = cmpStatusEl?.textContent;
   const previousTrendStatus = trendStatusEl?.textContent;
   const previousReposStatus = reposStatusEl?.textContent;
   const previousWiStatus = wiStatusEl?.textContent;
+  const previousPrStatus = prStatusEl?.textContent;
   if (statusEl) statusEl.textContent = "Refreshing from Azure DevOps and SonarCloud…";
   if (cmpStatusEl) cmpStatusEl.textContent = "Refreshing from Azure DevOps and SonarCloud…";
   if (trendStatusEl) trendStatusEl.textContent = "Refreshing from Azure DevOps and SonarCloud…";
   if (reposStatusEl) reposStatusEl.textContent = "Refreshing from Azure DevOps and SonarCloud…";
   if (wiStatusEl) wiStatusEl.textContent = "Refreshing from Azure DevOps and SonarCloud…";
+  if (prStatusEl) prStatusEl.textContent = "Refreshing from Azure DevOps and SonarCloud…";
 
   try {
     const response = await fetch("/api/refresh", { method: "POST" });
@@ -1163,17 +1348,20 @@ async function refreshData() {
     setTrendError(message);
     setReposError(message);
     setWorkItemsError(message);
+    setPullRequestsError(message);
     if (statusEl) statusEl.textContent = previousStatus;
     if (cmpStatusEl) cmpStatusEl.textContent = previousCmpStatus;
     if (trendStatusEl) trendStatusEl.textContent = previousTrendStatus;
     if (reposStatusEl) reposStatusEl.textContent = previousReposStatus;
     if (wiStatusEl) wiStatusEl.textContent = previousWiStatus;
+    if (prStatusEl) prStatusEl.textContent = previousPrStatus;
     metricsGrid?.classList.remove("is-stale");
     devMetricsChartSection?.classList.remove("is-stale");
     cmpMetricsGrid?.classList.remove("is-stale");
     trendResults?.classList.remove("is-stale");
     reposTableCard?.classList.remove("is-stale");
     wiResults?.classList.remove("is-stale");
+    prResults?.classList.remove("is-stale");
   } finally {
     setRefreshing(false);
   }
@@ -1241,6 +1429,12 @@ function onWorkItemsFiltersChanged() {
   reloadWorkItems();
 }
 
+function onPullRequestsFiltersChanged() {
+  persistPageDates("pull-requests");
+  persistPullRequestsChartFilters();
+  reloadPullRequests();
+}
+
 function onReposFiltersChanged() {
   persistPageDates("repos");
   reloadRepos();
@@ -1282,6 +1476,13 @@ function reloadWorkItems() {
   });
 }
 
+function reloadPullRequests() {
+  applyPullRequestsFilters().catch((error) => {
+    prResults?.classList.remove("is-stale");
+    setPullRequestsError(error instanceof Error ? error.message : "Failed to apply filters.");
+  });
+}
+
 function reloadRepos() {
   applyReposFilters().catch((error) => {
     reposTableCard.classList.remove("is-stale");
@@ -1294,6 +1495,7 @@ function reloadCurrentDashboard() {
   if (currentDashboardId === "trend") return applyTrendFilters();
   if (currentDashboardId === "repos") return applyReposFilters();
   if (currentDashboardId === "work-items") return applyWorkItemsFilters();
+  if (currentDashboardId === "pull-requests") return applyPullRequestsFilters();
   return applyFilters();
 }
 
@@ -1321,6 +1523,12 @@ function clearWorkItemsFilters() {
   wiStartDateInput.value = "";
   wiEndDateInput.value = "";
   onWorkItemsFiltersChanged();
+}
+
+function clearPullRequestsFilters() {
+  prStartDateInput.value = "";
+  prEndDateInput.value = "";
+  onPullRequestsFiltersChanged();
 }
 
 function clearReposFilters() {
@@ -1359,12 +1567,17 @@ async function init() {
           wiStartDateInput.min = cutDate;
           wiStartDateInput.value = cutDate;
         }
+        if (prStartDateInput) {
+          prStartDateInput.min = cutDate;
+          prStartDateInput.value = cutDate;
+        }
       }
       if (endDateInput) endDateInput.value = today;
       if (cmpEndDateInput) cmpEndDateInput.value = today;
       if (trendEndDateInput) trendEndDateInput.value = today;
       if (reposEndDateInput) reposEndDateInput.value = today;
       if (wiEndDateInput) wiEndDateInput.value = today;
+      if (prEndDateInput) prEndDateInput.value = today;
       const lastYear = String(Number(today.slice(0, 4)) - 1);
       if (cmpStartDate2Input) cmpStartDate2Input.value = `${lastYear}-01-01`;
       if (cmpEndDate2Input) cmpEndDate2Input.value = `${lastYear}-12-31`;
@@ -1376,6 +1589,7 @@ async function init() {
   restorePageDates(currentDashboardId);
   restoreTrendMetric();
   restoreDevMetricsChartFilters();
+  restorePullRequestsChartFilters();
   syncTrendAreaPathFilter();
   await reloadCurrentDashboard();
 }
@@ -1422,6 +1636,7 @@ function bindPage() {
   trendClearFiltersBtn?.addEventListener("click", clearTrendFilters);
   reposClearFiltersBtn?.addEventListener("click", clearReposFilters);
   wiClearFiltersBtn?.addEventListener("click", clearWorkItemsFilters);
+  prClearFiltersBtn?.addEventListener("click", clearPullRequestsFilters);
   startDateInput?.addEventListener("change", onFiltersChanged);
   endDateInput?.addEventListener("change", onFiltersChanged);
   areaPathSelect?.addEventListener("change", onFiltersChanged);
@@ -1441,9 +1656,17 @@ function bindPage() {
   wiStartDateInput?.addEventListener("change", onWorkItemsFiltersChanged);
   wiEndDateInput?.addEventListener("change", onWorkItemsFiltersChanged);
   wiAreaPathSelect?.addEventListener("change", onWorkItemsFiltersChanged);
+  prStartDateInput?.addEventListener("change", onPullRequestsFiltersChanged);
+  prEndDateInput?.addEventListener("change", onPullRequestsFiltersChanged);
+  prAuthorsSelect?.addEventListener("change", onPullRequestsFiltersChanged);
+  prXAxisSelect?.addEventListener("change", onPullRequestsFiltersChanged);
 
   for (const [key, tab] of Object.entries(wiChartTabs)) {
     tab?.addEventListener("click", () => setWorkItemsChartTab(key));
+  }
+
+  for (const [key, tab] of Object.entries(prChartTabs)) {
+    tab?.addEventListener("click", () => setPullRequestsChartTab(key));
   }
 
   tabs.workItems?.addEventListener("click", () => setActiveTab("workItems"));
@@ -1488,6 +1711,7 @@ function bindPage() {
     trendClearBtn: trendClearFiltersBtn,
     reposClearBtn: reposClearFiltersBtn,
     workItemsClearBtn: wiClearFiltersBtn,
+    pullRequestsClearBtn: prClearFiltersBtn,
     onDevMetricsRange: ({ start, end }) => {
       startDateInput.value = start;
       endDateInput.value = end;
@@ -1515,6 +1739,11 @@ function bindPage() {
       wiEndDateInput.value = end;
       onWorkItemsFiltersChanged();
     },
+    onPullRequestsRange: ({ start, end }) => {
+      prStartDateInput.value = start;
+      prEndDateInput.value = end;
+      onPullRequestsFiltersChanged();
+    },
   });
 }
 
@@ -1530,5 +1759,6 @@ if (!shouldRedirectLegacyHash) {
     setTrendError(message);
     setReposError(message);
     setWorkItemsError(message);
+    setPullRequestsError(message);
   });
 }

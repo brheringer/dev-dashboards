@@ -237,6 +237,16 @@ h1 {
   max-width: 420px;
 }
 
+.filter-field-authors {
+  min-width: 200px;
+  max-width: 280px;
+}
+
+.filter-field-authors select[multiple] {
+  min-height: 6.5rem;
+  padding: 0.35rem 0.5rem;
+}
+
 .filter-field.is-disabled {
   opacity: 0.45;
 }

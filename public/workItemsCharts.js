@@ -8,11 +8,23 @@ export const WORK_ITEM_SERIES = [
 const observers = new WeakMap();
 const SVG_NS = "http://www.w3.org/2000/svg";
 
-function formatAxisDate(isoDay, { withYear = false, grain = "day" } = {}) {
+function formatAxisDate(isoDay, { withYear = false, grain = "daily" } = {}) {
   const date = new Date(`${isoDay}T00:00:00.000Z`);
   if (Number.isNaN(date.getTime())) return isoDay;
-  if (grain === "month") {
-    return date.toLocaleDateString(undefined, { month: "short", year: "numeric", timeZone: "UTC" });
+  if (grain === "yearly" || grain === "year") {
+    return date.toLocaleDateString(undefined, { year: "numeric", timeZone: "UTC" });
+  }
+  if (grain === "quarterly" || grain === "quarter") {
+    const quarter = Math.floor(date.getUTCMonth() / 3) + 1;
+    const year = date.getUTCFullYear();
+    return withYear ? `Q${quarter} ${year}` : `Q${quarter} '${String(year).slice(-2)}`;
+  }
+  if (grain === "monthly" || grain === "month") {
+    return date.toLocaleDateString(undefined, {
+      month: "short",
+      year: withYear ? "numeric" : undefined,
+      timeZone: "UTC",
+    });
   }
   const options = { month: "short", day: "numeric", timeZone: "UTC" };
   if (withYear) options.year = "numeric";
@@ -75,8 +87,12 @@ function formatCount(value) {
   return new Intl.NumberFormat().format(value);
 }
 
-function seriesTotal(totals) {
-  return WORK_ITEM_SERIES.reduce((sum, series) => sum + (Number(totals[series.key]) || 0), 0);
+function resolveSeries(options = {}) {
+  return options.series?.length ? options.series : WORK_ITEM_SERIES;
+}
+
+function seriesTotal(totals, series = WORK_ITEM_SERIES) {
+  return series.reduce((sum, item) => sum + (Number(totals[item.key]) || 0), 0);
 }
 
 function showEmpty(container, message) {
@@ -120,19 +136,19 @@ function el(name, attrs = {}) {
   return node;
 }
 
-function createLegend(totals, { showPercent = false } = {}) {
-  const total = seriesTotal(totals);
+function createLegend(totals, { showPercent = false, series = WORK_ITEM_SERIES } = {}) {
+  const total = seriesTotal(totals, series);
   const legend = document.createElement("ul");
   legend.className = "wi-legend";
-  for (const series of WORK_ITEM_SERIES) {
-    const value = Number(totals[series.key]) || 0;
+  for (const seriesItem of series) {
+    const value = Number(totals[seriesItem.key]) || 0;
     const item = document.createElement("li");
     item.className = "wi-legend-item";
     const swatch = document.createElement("span");
     swatch.className = "wi-swatch";
-    swatch.style.background = series.color;
+    swatch.style.background = seriesItem.color;
     const label = document.createElement("span");
-    label.textContent = series.label;
+    label.textContent = seriesItem.label;
     const amount = document.createElement("span");
     amount.className = "wi-legend-value";
     if (showPercent && total > 0) {
@@ -379,15 +395,16 @@ function paintCartesian(container, mode) {
   const {
     points = [],
     emptyMessage = "No work items in this date range.",
-    xGrain = "day",
+    xGrain = "daily",
     legendTotals,
   } = container._chartOptions || {};
+  const series = resolveSeries(container._chartOptions || {});
   const width = Math.max(container.clientWidth, 0);
   const height = Math.max(container.clientHeight, 0);
   if (width < 40 || height < 40) return;
   container.replaceChildren();
 
-  if (!points.length) {
+  if (!points.length || !series.length) {
     showEmpty(container, emptyMessage);
     return;
   }
@@ -396,11 +413,11 @@ function paintCartesian(container, mode) {
   const maxValue =
     mode === "stacked"
       ? Math.max(
-          ...points.map((point) => seriesTotal(point)),
+          ...points.map((point) => seriesTotal(point, series)),
           1
         )
       : Math.max(
-          ...WORK_ITEM_SERIES.flatMap((series) => points.map((point) => Number(point[series.key]) || 0)),
+          ...series.flatMap((item) => points.map((point) => Number(point[item.key]) || 0)),
           1
         );
 
@@ -412,7 +429,7 @@ function paintCartesian(container, mode) {
 
   const layout = document.createElement("div");
   layout.className = "wi-chart-stack";
-  layout.appendChild(createLegend(legendTotals || last));
+  layout.appendChild(createLegend(legendTotals || last, { series }));
   const chartHost = document.createElement("div");
   chartHost.className = "wi-chart-canvas wi-chart-canvas-wide";
   layout.appendChild(chartHost);
@@ -449,16 +466,16 @@ function paintCartesian(container, mode) {
   const tooltip = createTooltip();
 
   if (mode === "line") {
-    for (const series of WORK_ITEM_SERIES) {
+    for (const item of series) {
       const coords = points.map((point, index) => ({
         x: xAt(index),
-        y: yChart(Number(point[series.key]) || 0),
+        y: yChart(Number(point[item.key]) || 0),
       }));
       svg.appendChild(
         el("path", {
           d: linePath(coords),
           fill: "none",
-          stroke: series.color,
+          stroke: item.color,
           "stroke-width": 2.25,
           "stroke-linejoin": "round",
           "stroke-linecap": "round",
@@ -473,8 +490,8 @@ function paintCartesian(container, mode) {
     points.forEach((point, index) => {
       let acc = 0;
       const x = xAt(index) - barW / 2;
-      for (const series of WORK_ITEM_SERIES) {
-        const value = Number(point[series.key]) || 0;
+      for (const item of series) {
+        const value = Number(point[item.key]) || 0;
         if (value <= 0) continue;
         const y1 = yChart(acc + value);
         const y0 = yChart(acc);
@@ -484,7 +501,7 @@ function paintCartesian(container, mode) {
             y: y1,
             width: barW,
             height: Math.max(y0 - y1, 0),
-            fill: series.color,
+            fill: item.color,
             class: "wi-stack-bar",
           })
         );
@@ -535,10 +552,10 @@ function paintCartesian(container, mode) {
     hoverLine.setAttribute("x2", String(cx));
     hoverLine.classList.remove("hidden");
 
-    const rows = WORK_ITEM_SERIES.map(
-      (series) => `${series.label}: ${formatCount(Number(point[series.key]) || 0)}`
+    const rows = series.map(
+      (item) => `${item.label}: ${formatCount(Number(point[item.key]) || 0)}`
     );
-    tooltip.textContent = `${formatAxisDate(point.date, { withYear: true, grain: xGrain })}\n${rows.join("\n")}\nTotal: ${formatCount(seriesTotal(point))}`;
+    tooltip.textContent = `${formatAxisDate(point.date, { withYear: true, grain: xGrain })}\n${rows.join("\n")}\nTotal: ${formatCount(seriesTotal(point, series))}`;
     tooltip.classList.remove("hidden");
     placeTooltip(tooltip, cx, pad.top + 8, svgW);
   }

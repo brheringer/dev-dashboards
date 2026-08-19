@@ -10,6 +10,7 @@ import { computeWorkItems } from "./workItems.js";
 import { computeDevMetricsChart } from "./devMetricsChart.js";
 import { getWorkItemsPage, getPullRequestsPage } from "./details.js";
 import { fetchClosedWorkItems } from "./sources/adoWorkItems.js";
+import { computePullRequests } from "./pullRequests.js";
 import { fetchPullRequests } from "./sources/adoPullRequests.js";
 import { fetchSonarMeasures } from "./sources/sonarCloud.js";
 
@@ -24,6 +25,7 @@ const DASHBOARDS = {
   comparison: { name: "Comparison" },
   trend: { name: "Trend" },
   "work-items": { name: "Work Items" },
+  "pull-requests": { name: "Pull Requests" },
   repos: { name: "Repos" },
 };
 
@@ -34,6 +36,7 @@ const PATH_TO_DASHBOARD = {
   "/comparison": "comparison",
   "/trend": "trend",
   "/work-items": "work-items",
+  "/pull-requests": "pull-requests",
   "/repos": "repos",
 };
 
@@ -97,6 +100,24 @@ function readWorkItemsFilters(req) {
   return {
     ...readDateFilters(req),
     areaPath: areaPath || null,
+  };
+}
+
+function readPullRequestsFilters(req) {
+  const authors = [];
+  const rawAuthors = req.query.authors;
+  if (typeof rawAuthors === "string" && rawAuthors.trim()) {
+    authors.push(...rawAuthors.split(",").map((value) => value.trim()).filter(Boolean));
+  } else if (Array.isArray(rawAuthors)) {
+    for (const value of rawAuthors) {
+      if (typeof value === "string" && value.trim()) authors.push(value.trim());
+    }
+  }
+  const grain = typeof req.query.grain === "string" ? req.query.grain : "daily";
+  return {
+    ...readDateFilters(req),
+    authors: authors.length ? authors : null,
+    grain,
   };
 }
 
@@ -170,6 +191,16 @@ app.get("/api/work-items", (req, res) => {
   res.json({
     workItems: computeWorkItems(cache, filters),
     areaPaths: config.azureDevOps.areaPathsOfInterest,
+    refreshing: refreshInProgress,
+    cutDate: cache?.cutDate || config.cutDate,
+  });
+});
+
+app.get("/api/pull-requests", (req, res) => {
+  const cache = readCache();
+  const filters = readPullRequestsFilters(req);
+  res.json({
+    pullRequests: computePullRequests(cache, filters),
     refreshing: refreshInProgress,
     cutDate: cache?.cutDate || config.cutDate,
   });

@@ -15,7 +15,7 @@ async function fetchPullRequestsForRepo(repositoryName, cutDate) {
   // ADO list PRs does not support minTime; page newest-first and stop past cutDate.
   while (true) {
     const data = await adoFetch(
-      `${projectPath()}/_apis/git/repositories/${encodeURIComponent(repositoryName)}/pullrequests`,
+      `${projectPath()}/i`,
       {
         query: {
           "searchCriteria.status": "all",
