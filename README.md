@@ -109,13 +109,3 @@ The dashboard recalculates every metric **from local cache** (no remote call):
 - Lines of code / coverage deltas → change vs the last analysis strictly before the start date (`+12,450 in period`, `+2.3 pp in period`)
 
 Defaults: start = `cutDate` from config/cache, end = today. **Clear dates** removes the range.
-
-## API
-
-- `GET /api/config` — cut date, last refresh timestamp, branding, and `areaPathsOfInterest`
-- `GET /api/metrics?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD` — aggregated metrics from local cache
-- `GET /api/details/work-items?startDate=&endDate=&page=&pageSize=` — paginated work items (10/25/50/100/500)
-- `GET /api/details/pull-requests?startDate=&endDate=&page=&pageSize=` — paginated pull requests
-- `GET /api/repos?startDate=&endDate=` — pull requests, lines of code, and coverage per repository
-- `GET /api/work-items?startDate=&endDate=&areaPath=` — work-item totals and accumulated daily counts by type
-- `POST /api/refresh?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD` — fetch remote data, overwrite cache, return metrics
