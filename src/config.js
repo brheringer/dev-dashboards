@@ -31,6 +31,9 @@ export const config = {
     areaPathsOfInterest: (fileConfig.azureDevOps.areaPathsOfInterest || [])
       .map((value) => String(value).trim())
       .filter(Boolean),
+    authors: (fileConfig.azureDevOps.authors || [])
+      .map((value) => String(value).trim())
+      .filter(Boolean),
   },
   sonarCloud: {
     organization: fileConfig.sonarCloud?.organization,

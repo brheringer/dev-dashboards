@@ -7,7 +7,8 @@
     "organization": "org",
     "project": "proj",
     "repositories": ["repo1", "repo2"],
-    "areaPathsOfInterest": ["Project\\Team A", "Project\\Team B"]
+    "areaPathsOfInterest": ["Project\\Team A", "Project\\Team B"],
+    "authors": ["Alice Example", "Bob Example"]
   },
   "sonarCloud": {
     "organization": "org",

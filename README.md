@@ -11,7 +11,7 @@ Small Node.js app that loads delivery metrics from **Azure DevOps** and **SonarC
 | Sprint Bugs | Azure DevOps | Closed `Bug` items tagged `sprint-bug` since cut date |
 | US Bugs | Azure DevOps | Closed `Bug` items without the `sprint-bug` tag since cut date |
 | Tech Debts | Azure DevOps | Closed `Task` items tagged `tech-debt` since cut date |
-| Pull Requests | Azure DevOps | PRs created since cut date in configured repositories |
+| Pull Requests | Azure DevOps | PRs created since cut date in configured repositories (optionally limited to `authors`) |
 | Lines of Code | SonarCloud | Sum of `ncloc` across configured projects |
 | Coverage | SonarCloud | `ncloc`-weighted average of `coverage` |
 
@@ -58,7 +58,8 @@ cp config.json.example config.json
     "organization": "your-org",
     "project": "your-project",
     "repositories": ["repo-a", "repo-b"],
-    "areaPathsOfInterest": ["Project\\Team A", "Project\\Team B"]
+    "areaPathsOfInterest": ["Project\\Team A", "Project\\Team B"],
+    "authors": ["Alice Example", "Bob Example"]
   },
   "sonarCloud": {
     "organization": "your-sonar-org",
@@ -74,6 +75,8 @@ cp config.json.example config.json
 `branding.author` and `branding.product` are shown in the sidebar and page headers as `author / product`. `cutDate` is global: work items use closed date ≥ cut date; PRs use creation date ≥ cut date.
 
 `azureDevOps.areaPathsOfInterest` limits which work items are loaded and counted. On **Refresh data**, Azure DevOps is queried only for closed items whose `System.AreaPath` equals one of the listed paths (JSON uses `\\` for each backslash in the area path). All dashboards then use that subset. An empty list (or omitting the field) loads every matching work item in the project. The Work Items page dropdown is built from this list; **All area paths** means every configured path, and a specific value further filters the charts. After editing the list, restart the server and click **Refresh data**.
+
+`azureDevOps.authors` limits which pull requests are loaded and counted. On **Refresh data**, only PRs whose creator `displayName` or `uniqueName` matches an entry in the list are kept in the cache. All dashboards that use PR counts then see that subset. An empty list (or omitting the field) loads every PR in the configured repositories since `cutDate`. The Pull Requests page author filter is built from authors present in the cache (after this config filter). After editing the list, restart the server and click **Refresh data**.
 
 ## Run
 
@@ -101,7 +104,7 @@ npm run dev
 The dashboard recalculates every metric **from local cache** (no remote call):
 
 - Work items → `closedDate` between start and end (inclusive); Work Items dashboard can also filter by a single `areaPathsOfInterest` value
-- Pull requests → `creationDate` between start and end (inclusive)
+- Pull requests → `creationDate` between start and end (inclusive); already limited to `azureDevOps.authors` if configured; the Pull Requests dashboard can further filter by selected authors
 - Lines of code / coverage → last SonarCloud analysis at or before the end date, taken from cached measure history (`api/measures/search_history` since `cutDate`); each card shows the analysis date used
 - Lines of code / coverage deltas → change vs the last analysis strictly before the start date (`+12,450 in period`, `+2.3 pp in period`)
 

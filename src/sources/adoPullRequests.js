@@ -3,11 +3,20 @@ import { adoFetch, projectPath } from "./adoClient.js";
 
 const PAGE_SIZE = 100;
 
+function authorMatchesConfig(createdBy, allowedAuthors) {
+  if (!allowedAuthors.length) return true;
+  const candidates = [createdBy?.displayName, createdBy?.uniqueName]
+    .map((value) => (typeof value === "string" ? value.trim() : ""))
+    .filter(Boolean);
+  return candidates.some((name) => allowedAuthors.includes(name));
+}
+
 /**
  * @param {string} repositoryName
  * @param {string} cutDate ISO date YYYY-MM-DD
+ * @param {string[]} allowedAuthors
  */
-async function fetchPullRequestsForRepo(repositoryName, cutDate) {
+async function fetchPullRequestsForRepo(repositoryName, cutDate, allowedAuthors) {
   const cut = new Date(`${cutDate}T00:00:00.000Z`);
   const results = [];
   let skip = 0;
@@ -15,7 +24,7 @@ async function fetchPullRequestsForRepo(repositoryName, cutDate) {
   // ADO list PRs does not support minTime; page newest-first and stop past cutDate.
   while (true) {
     const data = await adoFetch(
-      `${projectPath()}/i`,
+      `${projectPath()}/_apis/git/repositories/${encodeURIComponent(repositoryName)}/pullrequests`,
       {
         query: {
           "searchCriteria.status": "all",
@@ -40,6 +49,8 @@ async function fetchPullRequestsForRepo(repositoryName, cutDate) {
         reachedOlderThanCut = true;
         continue;
       }
+
+      if (!authorMatchesConfig(pr.createdBy, allowedAuthors)) continue;
 
       results.push({
         id: pr.pullRequestId,
@@ -68,14 +79,16 @@ async function fetchPullRequestsForRepo(repositoryName, cutDate) {
 
 /**
  * Load pull requests created on/after cutDate for configured repositories.
+ * When azureDevOps.authors is non-empty, only those authors are kept.
  */
 export async function fetchPullRequests() {
   const cutDate = config.cutDate;
   const repositories = config.azureDevOps.repositories || [];
+  const allowedAuthors = config.azureDevOps.authors || [];
   const all = [];
 
   for (const repository of repositories) {
-    const prs = await fetchPullRequestsForRepo(repository, cutDate);
+    const prs = await fetchPullRequestsForRepo(repository, cutDate, allowedAuthors);
     all.push(...prs);
   }
 
