@@ -76,7 +76,7 @@ function buildResolvingTimeRecords(cache, areaPath) {
   return records;
 }
 
-function summarize(records) {
+export function summarizeResolvingTimeRecords(records) {
   const values = records.map((record) => record.resolvingTimeDays).filter(Number.isFinite);
   if (!values.length) {
     return {
@@ -135,7 +135,7 @@ function emptyResult(filters, grain) {
     endDate: filters.endDate || null,
     areaPath: filters.areaPath || null,
     grain,
-    summary: summarize([]),
+    summary: summarizeResolvingTimeRecords([]),
     points: [],
     unit: "days",
   };
@@ -174,8 +174,32 @@ export function computeResolvingTime(cache, filters = {}) {
     endDate,
     areaPath,
     grain,
-    summary: summarize(records),
+    summary: summarizeResolvingTimeRecords(records),
     points: bucketAverageSeries(records, keys, grain),
     unit: "days",
   };
+}
+
+/**
+ * Average Active → Resolved time for work items resolved in the date range.
+ *
+ * @param {object|null} cache
+ * @param {{ startDate?: string|null, endDate?: string|null, areaPath?: string|null }} [filters]
+ * @returns {number|null}
+ */
+export function computeResolvingTimeAverage(cache, filters = {}) {
+  const areaPath = filters.areaPath || null;
+  if (!cache?.workItemStatusHistory?.length) return null;
+
+  const allRecords = buildResolvingTimeRecords(cache, areaPath);
+  const endDate = filters.endDate || todayIsoDate();
+  const startDate =
+    filters.startDate || cache.cutDate || earliestResolvedDate(allRecords) || endDate;
+  const start = toBoundDate(startDate, "start");
+  const end = toBoundDate(endDate, "end");
+
+  const records = allRecords.filter((record) =>
+    isWithinRange(record.resolvedDate, start, end)
+  );
+  return summarizeResolvingTimeRecords(records).averageDays;
 }

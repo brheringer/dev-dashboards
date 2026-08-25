@@ -1,4 +1,5 @@
 import { isAreaPathOfInterest } from "./config.js";
+import { computeResolvingTimeAverage } from "./resolvingTime.js";
 
 const TECH_DEBT_TAG = "tech-debt";
 const SPRINT_BUG_TAG = "sprint-bug";
@@ -149,6 +150,7 @@ export function computeMetrics(cache, filters = {}) {
       linesOfCodeDelta: null,
       coverage: null,
       coverageDelta: null,
+      resolvingTime: null,
       codeAsOf: null,
       codeBaselineAsOf: null,
     };
@@ -225,6 +227,7 @@ export function computeMetrics(cache, filters = {}) {
     linesOfCodeDelta,
     coverage: atEnd.coverage,
     coverageDelta,
+    resolvingTime: computeResolvingTimeAverage(cache, filters),
     codeAsOf: atEnd.asOf,
     codeBaselineAsOf: atStart.asOf,
   };

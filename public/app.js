@@ -233,6 +233,7 @@ function metricSet(prefix) {
     usBugs: document.getElementById(`${prefix}-usBugs`),
     techDebts: document.getElementById(`${prefix}-techDebts`),
     pullRequests: document.getElementById(`${prefix}-pullRequests`),
+    resolvingTime: document.getElementById(`${prefix}-resolvingTime`),
     linesOfCode: document.getElementById(`${prefix}-linesOfCode`),
     coverage: document.getElementById(`${prefix}-coverage`),
     linesOfCodeDelta: document.getElementById(`${prefix}-linesOfCodeDelta`),
@@ -499,6 +500,9 @@ function fillMetricSet(set, metrics) {
   set.usBugs.textContent = formatNumber(metrics.usBugs);
   set.techDebts.textContent = formatNumber(metrics.techDebts);
   set.pullRequests.textContent = formatNumber(metrics.pullRequests);
+  if (set.resolvingTime) {
+    set.resolvingTime.textContent = formatResolvingTimeDays(metrics.resolvingTime);
+  }
   set.linesOfCode.textContent = formatNumber(metrics.linesOfCode);
   set.coverage.textContent =
     metrics.coverage === null || metrics.coverage === undefined
@@ -529,7 +533,7 @@ function percentVariance(from, to) {
   return Math.round(((to - from) / Math.abs(from)) * 1000) / 10;
 }
 
-function setVariance(el, from, to) {
+function setVariance(el, from, to, { inverted = false } = {}) {
   el.classList.remove("up", "down", "flat");
   const valueEl = el.querySelector(".compare-variance-value");
   const variance = percentVariance(from, to);
@@ -539,8 +543,8 @@ function setVariance(el, from, to) {
   }
 
   valueEl.textContent = `${formatSignedNumber(variance)}%`;
-  if (variance > 0) el.classList.add("up");
-  else if (variance < 0) el.classList.add("down");
+  if (variance > 0) el.classList.add(inverted ? "down" : "up");
+  else if (variance < 0) el.classList.add(inverted ? "up" : "down");
   else el.classList.add("flat");
 }
 
@@ -550,10 +554,13 @@ const COMPARISON_VARIANCE_KEYS = [
   "techDebts",
   "sprintBugs",
   "usBugs",
+  "resolvingTime",
   "pullRequests",
   "linesOfCode",
   "coverage",
 ];
+
+const COMPARISON_INVERTED_VARIANCE_KEYS = new Set(["resolvingTime"]);
 
 function rangeLabel(metrics) {
   const rangeParts = [];
@@ -1102,7 +1109,8 @@ function renderComparison(period1, period2) {
     setVariance(
       document.getElementById(`cmpVar-${key}`),
       from === null || from === undefined ? NaN : Number(from),
-      to === null || to === undefined ? NaN : Number(to)
+      to === null || to === undefined ? NaN : Number(to),
+      { inverted: COMPARISON_INVERTED_VARIANCE_KEYS.has(key) }
     );
   }
 
