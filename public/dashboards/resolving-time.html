@@ -65,16 +65,54 @@
           </article>
         </div>
 
-        <section class="chart-card">
-          <div class="chart-card-head">
-            <div>
-              <h2>Average resolving time</h2>
-              <p id="rtChartHint" class="metric-hint"></p>
+        <div class="tabs" role="tablist" aria-label="Resolving time charts">
+          <button
+            id="rtTabAverage"
+            type="button"
+            class="tab active"
+            role="tab"
+            aria-selected="true"
+            aria-controls="rtPanelAverage"
+          >
+            Average
+          </button>
+          <button
+            id="rtTabScatter"
+            type="button"
+            class="tab"
+            role="tab"
+            aria-selected="false"
+            aria-controls="rtPanelScatter"
+          >
+            Scatter
+          </button>
+        </div>
+
+        <div id="rtPanelAverage" class="tab-panel" role="tabpanel">
+          <section class="chart-card">
+            <div class="chart-card-head">
+              <div>
+                <h2>Average resolving time</h2>
+                <p id="rtChartHint" class="metric-hint"></p>
+              </div>
+              <p id="rtChartAverage" class="value">—</p>
             </div>
-            <p id="rtChartAverage" class="value">—</p>
-          </div>
-          <div id="rtChart" class="trend-chart" aria-label="Average resolving time line chart"></div>
-        </section>
+            <div id="rtChart" class="trend-chart" aria-label="Average resolving time line chart"></div>
+          </section>
+        </div>
+
+        <div id="rtPanelScatter" class="tab-panel hidden" role="tabpanel" hidden>
+          <section class="chart-card">
+            <div class="chart-card-head">
+              <div>
+                <h2>Individual resolving times</h2>
+                <p id="rtScatterHint" class="metric-hint"></p>
+              </div>
+              <p id="rtScatterCount" class="value">—</p>
+            </div>
+            <div id="rtScatterChart" class="trend-chart" aria-label="Resolving time scatter chart"></div>
+          </section>
+        </div>
       </section>
 
       <p id="rtError" class="error hidden"></p>

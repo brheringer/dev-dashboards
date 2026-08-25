@@ -709,6 +709,12 @@ h1 {
   stroke-width: 2;
 }
 
+.scatter-dot {
+  fill: var(--accent);
+  fill-opacity: 0.55;
+  stroke: none;
+}
+
 .trend-hover-line {
   stroke: rgba(232, 238, 233, 0.35);
   stroke-width: 1;

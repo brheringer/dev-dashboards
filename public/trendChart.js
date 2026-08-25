@@ -297,3 +297,202 @@ export function renderTrendChart(container, options) {
     observers.set(container, observer);
   }
 }
+
+function dayMs(isoDay) {
+  const time = new Date(`${isoDay}T00:00:00.000Z`).getTime();
+  return Number.isNaN(time) ? null : time;
+}
+
+function pickScatterXLabels(minMs, maxMs) {
+  if (minMs === null || maxMs === null) return [];
+  if (minMs === maxMs) return [minMs];
+  const labels = [];
+  const steps = 4;
+  for (let i = 0; i <= steps; i += 1) {
+    labels.push(minMs + ((maxMs - minMs) * i) / steps);
+  }
+  return labels;
+}
+
+function paintScatterChart(container, options) {
+  const {
+    points = [],
+    formatY = (value) => String(value),
+    formatTooltip = null,
+    yMin = null,
+    yMax = null,
+    emptyMessage = "No data in this date range.",
+  } = options;
+
+  container.replaceChildren();
+
+  const width = Math.max(container.clientWidth, 0);
+  const height = Math.max(container.clientHeight, 0);
+  if (width < 40 || height < 40) return;
+
+  const defined = points.filter(
+    (point) =>
+      point.date &&
+      point.value !== null &&
+      point.value !== undefined &&
+      Number.isFinite(Number(point.value)) &&
+      dayMs(point.date) !== null
+  );
+  if (!defined.length) {
+    const empty = document.createElement("p");
+    empty.className = "chart-empty";
+    empty.textContent = emptyMessage;
+    container.appendChild(empty);
+    return;
+  }
+
+  const values = defined.map((point) => Number(point.value));
+  const times = defined.map((point) => dayMs(point.date));
+  const dataMin = Math.min(...values);
+  const dataMax = Math.max(...values);
+  const axisMin = yMin === null || yMin === undefined ? dataMin : yMin;
+  const axisMax = yMax === null || yMax === undefined ? dataMax : yMax;
+  const ticks = niceTicks(axisMin, axisMax);
+  const domainMin = ticks[0];
+  const domainMax = ticks[ticks.length - 1];
+  const domain = domainMax - domainMin || 1;
+  const xMin = Math.min(...times);
+  const xMax = Math.max(...times);
+  const xSpan = xMax - xMin || 1;
+
+  const pad = { top: 16, right: 18, bottom: 36, left: 58 };
+  const innerW = Math.max(width - pad.left - pad.right, 1);
+  const innerH = Math.max(height - pad.top - pad.bottom, 1);
+  const xAt = (ms) => pad.left + ((ms - xMin) / xSpan) * innerW;
+  const yAt = (value) => pad.top + innerH - ((value - domainMin) / domain) * innerH;
+
+  const ns = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(ns, "svg");
+  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+  svg.setAttribute("width", String(width));
+  svg.setAttribute("height", String(height));
+  svg.setAttribute("role", "img");
+  svg.classList.add("trend-svg");
+
+  for (const tick of ticks) {
+    const y = yAt(tick);
+    const grid = document.createElementNS(ns, "line");
+    grid.setAttribute("x1", String(pad.left));
+    grid.setAttribute("x2", String(pad.left + innerW));
+    grid.setAttribute("y1", String(y));
+    grid.setAttribute("y2", String(y));
+    grid.setAttribute("class", "trend-grid");
+    svg.appendChild(grid);
+
+    const label = document.createElementNS(ns, "text");
+    label.setAttribute("x", String(pad.left - 8));
+    label.setAttribute("y", String(y + 4));
+    label.setAttribute("text-anchor", "end");
+    label.setAttribute("class", "trend-axis-label");
+    label.textContent = formatY(tick);
+    svg.appendChild(label);
+  }
+
+  for (const ms of pickScatterXLabels(xMin, xMax)) {
+    const iso = new Date(ms).toISOString().slice(0, 10);
+    const label = document.createElementNS(ns, "text");
+    label.setAttribute("x", String(xAt(ms)));
+    label.setAttribute("y", String(height - 10));
+    label.setAttribute("text-anchor", "middle");
+    label.setAttribute("class", "trend-axis-label");
+    label.textContent = formatAxisDate(iso);
+    svg.appendChild(label);
+  }
+
+  const dots = [];
+  for (const point of defined) {
+    const ms = dayMs(point.date);
+    const cx = xAt(ms);
+    const cy = yAt(Number(point.value));
+    const dot = document.createElementNS(ns, "circle");
+    dot.setAttribute("cx", String(cx));
+    dot.setAttribute("cy", String(cy));
+    dot.setAttribute("r", "3.5");
+    dot.setAttribute("class", "scatter-dot");
+    svg.appendChild(dot);
+    dots.push({ point, cx, cy, ms });
+  }
+
+  const hoverDot = document.createElementNS(ns, "circle");
+  hoverDot.setAttribute("r", "6");
+  hoverDot.setAttribute("class", "trend-hover-dot hidden");
+  svg.appendChild(hoverDot);
+
+  const tooltip = document.createElement("div");
+  tooltip.className = "trend-tooltip hidden";
+
+  const hit = document.createElementNS(ns, "rect");
+  hit.setAttribute("x", String(pad.left));
+  hit.setAttribute("y", String(pad.top));
+  hit.setAttribute("width", String(innerW));
+  hit.setAttribute("height", String(innerH));
+  hit.setAttribute("fill", "transparent");
+  hit.style.cursor = "crosshair";
+  svg.appendChild(hit);
+
+  function hideHover() {
+    hoverDot.classList.add("hidden");
+    tooltip.classList.add("hidden");
+  }
+
+  function showHover(event) {
+    const bounds = svg.getBoundingClientRect();
+    const x = event.clientX - bounds.left;
+    const y = event.clientY - bounds.top;
+    let best = null;
+    let bestDist = Infinity;
+    for (const entry of dots) {
+      const dist = (entry.cx - x) ** 2 + (entry.cy - y) ** 2;
+      if (dist < bestDist) {
+        bestDist = dist;
+        best = entry;
+      }
+    }
+    if (!best || bestDist > 24 ** 2) {
+      hideHover();
+      return;
+    }
+
+    hoverDot.setAttribute("cx", String(best.cx));
+    hoverDot.setAttribute("cy", String(best.cy));
+    hoverDot.classList.remove("hidden");
+    tooltip.textContent = formatTooltip
+      ? formatTooltip(best.point)
+      : `${formatAxisDate(best.point.date, { withYear: true })} · ${formatY(best.point.value)}`;
+    tooltip.classList.remove("hidden");
+    const tipW = tooltip.offsetWidth;
+    tooltip.style.left = `${Math.min(Math.max(best.cx - tipW / 2, 8), width - tipW - 8)}px`;
+    tooltip.style.top = `${Math.max(best.cy - 36, 8)}px`;
+  }
+
+  hit.addEventListener("mousemove", showHover);
+  hit.addEventListener("mouseleave", hideHover);
+
+  container.appendChild(svg);
+  container.appendChild(tooltip);
+}
+
+const scatterObservers = new WeakMap();
+
+export function renderScatterChart(container, options) {
+  if (!container) return;
+  container._scatterChartOptions = options;
+  paintScatterChart(container, options);
+
+  if (!scatterObservers.has(container)) {
+    let lastWidth = container.clientWidth;
+    const observer = new ResizeObserver(() => {
+      const width = container.clientWidth;
+      if (width === lastWidth) return;
+      lastWidth = width;
+      paintScatterChart(container, container._scatterChartOptions || options);
+    });
+    observer.observe(container);
+    scatterObservers.set(container, observer);
+  }
+}

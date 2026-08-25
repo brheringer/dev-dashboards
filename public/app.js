@@ -1,6 +1,6 @@
 import { attachDatePresetMenus, attachRangePresetMenus } from "./datePresetMenu.js";
 import { savePageDates, loadPageDates } from "./dateStorage.js";
-import { renderTrendChart } from "./trendChart.js";
+import { renderTrendChart, renderScatterChart } from "./trendChart.js";
 import { renderDevMetricsChart } from "./devMetricsChart.js";
 import {
   renderPieChart,
@@ -224,6 +224,17 @@ const rtRangeDays = document.getElementById("rtRangeDays");
 const rtChartEl = document.getElementById("rtChart");
 const rtChartHint = document.getElementById("rtChartHint");
 const rtChartAverage = document.getElementById("rtChartAverage");
+const rtScatterChartEl = document.getElementById("rtScatterChart");
+const rtScatterHint = document.getElementById("rtScatterHint");
+const rtScatterCount = document.getElementById("rtScatterCount");
+const rtChartTabs = {
+  average: document.getElementById("rtTabAverage"),
+  scatter: document.getElementById("rtTabScatter"),
+};
+const rtChartPanels = {
+  average: document.getElementById("rtPanelAverage"),
+  scatter: document.getElementById("rtPanelScatter"),
+};
 
 function metricSet(prefix) {
   return {
@@ -286,6 +297,8 @@ let lastPullRequests = null;
 let activeTab = "workItems";
 let activeWiChartTab = "total";
 let activePrChartTab = "line";
+let activeRtChartTab = "average";
+let lastResolvingTime = null;
 
 function formatNumber(value) {
   return new Intl.NumberFormat().format(value);
@@ -902,7 +915,70 @@ function renderPullRequestsDashboard(data) {
   }
 }
 
+function paintResolvingTimeCharts(data) {
+  const grainLabel = DEV_METRICS_GRAIN_LABELS[data.grain] || data.grain;
+  const areaHint = data.areaPath ? ` · ${data.areaPath}` : "";
+  const summary = data.summary || {};
+
+  if (rtChartHint) {
+    rtChartHint.textContent = `${grainLabel} buckets by resolved date${areaHint}`;
+  }
+  if (rtChartAverage) rtChartAverage.textContent = formatResolvingTimeDays(summary.averageDays);
+  if (rtScatterHint) {
+    rtScatterHint.textContent = `one point per work item by resolved date${areaHint}`;
+  }
+  if (rtScatterCount) {
+    rtScatterCount.textContent = formatNumber(summary.workItemCount || 0);
+  }
+
+  if (activeRtChartTab === "scatter") {
+    renderScatterChart(rtScatterChartEl, {
+      points: data.scatterPoints || [],
+      formatY: (value) => formatResolvingTimeDays(value),
+      formatTooltip: (point) =>
+        `#${point.workItemId} · ${formatAxisDateForTooltip(point.date)} · ${formatResolvingTimeDays(point.value)}`,
+      yMin: 0,
+      emptyMessage: "No resolving time data in this date range.",
+    });
+    return;
+  }
+
+  renderTrendChart(rtChartEl, {
+    points: data.points || [],
+    formatY: (value) => formatResolvingTimeDays(value),
+    yMin: 0,
+    emptyMessage: "No resolving time data in this date range.",
+  });
+}
+
+function formatAxisDateForTooltip(isoDay) {
+  if (!isoDay) return "";
+  const date = new Date(`${isoDay}T00:00:00.000Z`);
+  if (Number.isNaN(date.getTime())) return isoDay;
+  return date.toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  });
+}
+
+function setResolvingTimeChartTab(tabId) {
+  activeRtChartTab = rtChartTabs[tabId] ? tabId : "average";
+  for (const [key, tab] of Object.entries(rtChartTabs)) {
+    const selected = key === activeRtChartTab;
+    tab?.classList.toggle("active", selected);
+    tab?.setAttribute("aria-selected", selected ? "true" : "false");
+    rtChartPanels[key]?.classList.toggle("hidden", !selected);
+    if (rtChartPanels[key]) rtChartPanels[key].hidden = !selected;
+  }
+  if (lastResolvingTime) {
+    requestAnimationFrame(() => paintResolvingTimeCharts(lastResolvingTime));
+  }
+}
+
 function renderResolvingTime(data) {
+  lastResolvingTime = data;
   rtResults?.classList.remove("is-stale");
 
   if (!data?.hasData) {
@@ -920,21 +996,8 @@ function renderResolvingTime(data) {
   if (rtAverageDays) rtAverageDays.textContent = formatResolvingTimeDays(summary.averageDays);
   if (rtMedianDays) rtMedianDays.textContent = formatResolvingTimeDays(summary.medianDays);
   if (rtRangeDays) rtRangeDays.textContent = formatResolvingTimeRange(summary.minDays, summary.maxDays);
-  if (rtChartAverage) rtChartAverage.textContent = formatResolvingTimeDays(summary.averageDays);
 
-  const grainLabel = DEV_METRICS_GRAIN_LABELS[data.grain] || data.grain;
-  if (rtChartHint) {
-    rtChartHint.textContent = `${grainLabel} buckets by resolved date${
-      data.areaPath ? ` · ${data.areaPath}` : ""
-    }`;
-  }
-
-  renderTrendChart(rtChartEl, {
-    points: data.points || [],
-    formatY: (value) => formatResolvingTimeDays(value),
-    yMin: 0,
-    emptyMessage: "No resolving time data in this date range.",
-  });
+  requestAnimationFrame(() => paintResolvingTimeCharts(data));
 
   if (rtStatusEl) {
     rtStatusEl.textContent = `Last refreshed: ${formatDateTime(data.fetchedAt)} · Filtered ${rangeLabel(data)}${
@@ -1856,6 +1919,10 @@ function bindPage() {
 
   for (const [key, tab] of Object.entries(prChartTabs)) {
     tab?.addEventListener("click", () => setPullRequestsChartTab(key));
+  }
+
+  for (const [key, tab] of Object.entries(rtChartTabs)) {
+    tab?.addEventListener("click", () => setResolvingTimeChartTab(key));
   }
 
   tabs.workItems?.addEventListener("click", () => setActiveTab("workItems"));

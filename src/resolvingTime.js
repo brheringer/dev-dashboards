@@ -127,6 +127,20 @@ function earliestResolvedDate(records) {
   return dates[0] || null;
 }
 
+function scatterSeries(records) {
+  return records
+    .map((record) => ({
+      date: record.resolvedDate?.slice(0, 10) || null,
+      value: roundDays(record.resolvingTimeDays),
+      workItemId: record.workItemId,
+    }))
+    .filter((point) => point.date && Number.isFinite(point.value))
+    .sort((a, b) => {
+      if (a.date === b.date) return Number(a.workItemId) - Number(b.workItemId);
+      return a.date < b.date ? -1 : 1;
+    });
+}
+
 function emptyResult(filters, grain) {
   return {
     hasData: false,
@@ -137,6 +151,7 @@ function emptyResult(filters, grain) {
     grain,
     summary: summarizeResolvingTimeRecords([]),
     points: [],
+    scatterPoints: [],
     unit: "days",
   };
 }
@@ -176,6 +191,7 @@ export function computeResolvingTime(cache, filters = {}) {
     grain,
     summary: summarizeResolvingTimeRecords(records),
     points: bucketAverageSeries(records, keys, grain),
+    scatterPoints: scatterSeries(records),
     unit: "days",
   };
 }
