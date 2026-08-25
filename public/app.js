@@ -16,6 +16,7 @@ const DASHBOARDS = {
   comparison: { name: "Comparison", path: "/comparison" },
   trend: { name: "Trend", path: "/trend" },
   repos: { name: "Repos", path: "/repos" },
+  "resolving-time": { name: "Resolving Time", path: "/resolving-time" },
 };
 
 function dashboardIdFromHash(hash) {
@@ -205,6 +206,24 @@ const prChartPanels = {
 };
 const PR_X_AXIS_KEY = "brheringer.dashboard-pull-requests.x-axis";
 const PR_AUTHORS_KEY = "brheringer.dashboard-pull-requests.authors";
+const RT_X_AXIS_KEY = "brheringer.dashboard-resolving-time.x-axis";
+
+const rtClearFiltersBtn = document.getElementById("rtClearFiltersBtn");
+const rtStartDateInput = document.getElementById("rtStartDate");
+const rtEndDateInput = document.getElementById("rtEndDate");
+const rtXAxisSelect = document.getElementById("rtXAxis");
+const rtAreaPathSelect = document.getElementById("rtAreaPath");
+const rtStatusEl = document.getElementById("rtStatus");
+const rtEmptyState = document.getElementById("rtEmptyState");
+const rtResults = document.getElementById("rtResults");
+const rtErrorEl = document.getElementById("rtError");
+const rtWorkItemCount = document.getElementById("rtWorkItemCount");
+const rtAverageDays = document.getElementById("rtAverageDays");
+const rtMedianDays = document.getElementById("rtMedianDays");
+const rtRangeDays = document.getElementById("rtRangeDays");
+const rtChartEl = document.getElementById("rtChart");
+const rtChartHint = document.getElementById("rtChartHint");
+const rtChartAverage = document.getElementById("rtChartAverage");
 
 function metricSet(prefix) {
   return {
@@ -241,6 +260,7 @@ const PAGE_DATE_INPUTS = {
   ],
   trend: [trendStartDateInput, trendEndDateInput, trendAreaPathSelect],
   repos: [reposStartDateInput, reposEndDateInput],
+  "resolving-time": [rtStartDateInput, rtEndDateInput, rtAreaPathSelect],
 };
 
 function persistPageDates(pageId) {
@@ -258,6 +278,7 @@ let latestTrendRequestId = 0;
 let latestReposRequestId = 0;
 let latestWorkItemsRequestId = 0;
 let latestPullRequestsRequestId = 0;
+let latestResolvingTimeRequestId = 0;
 let lastTrend = null;
 let lastWorkItems = null;
 let lastPullRequests = null;
@@ -367,6 +388,15 @@ function getPullRequestsFilters() {
   };
 }
 
+function getResolvingTimeFilters() {
+  return {
+    startDate: rtStartDateInput?.value || null,
+    endDate: rtEndDateInput?.value || null,
+    areaPath: rtAreaPathSelect?.value || null,
+    grain: rtXAxisSelect?.value || "daily",
+  };
+}
+
 function buildPullRequestsQuery(filters = getPullRequestsFilters()) {
   const params = new URLSearchParams();
   if (filters.startDate) params.set("startDate", filters.startDate);
@@ -377,6 +407,13 @@ function buildPullRequestsQuery(filters = getPullRequestsFilters()) {
   }
   const query = params.toString();
   return query ? `?${query}` : "";
+}
+
+function buildResolvingTimeQuery(filters = getResolvingTimeFilters()) {
+  return buildQuery(
+    { grain: filters.grain, areaPath: filters.areaPath },
+    filters
+  );
 }
 
 function getReposFilters() {
@@ -752,6 +789,39 @@ function setPullRequestsError(message) {
   prErrorEl.classList.remove("hidden");
 }
 
+function setResolvingTimeError(message) {
+  if (!rtErrorEl) return;
+  if (!message) {
+    rtErrorEl.classList.add("hidden");
+    rtErrorEl.textContent = "";
+    return;
+  }
+  rtErrorEl.textContent = message;
+  rtErrorEl.classList.remove("hidden");
+}
+
+function formatResolvingTimeDays(value) {
+  if (value === null || value === undefined || !Number.isFinite(Number(value))) return "—";
+  const days = Number(value);
+  if (days < 1) {
+    const hours = Math.round(days * 24 * 10) / 10;
+    return `${hours} h`;
+  }
+  return `${days.toLocaleString(undefined, { maximumFractionDigits: 1 })} d`;
+}
+
+function formatResolvingTimeRange(minDays, maxDays) {
+  if (
+    minDays === null ||
+    maxDays === null ||
+    !Number.isFinite(Number(minDays)) ||
+    !Number.isFinite(Number(maxDays))
+  ) {
+    return "—";
+  }
+  return `${formatResolvingTimeDays(minDays)} – ${formatResolvingTimeDays(maxDays)}`;
+}
+
 function pullRequestsAuthorLabel(data) {
   if (!data?.authors?.length) return "";
   if (data.authors.length === 1) return ` · ${data.authors[0]}`;
@@ -825,6 +895,47 @@ function renderPullRequestsDashboard(data) {
   }
 }
 
+function renderResolvingTime(data) {
+  rtResults?.classList.remove("is-stale");
+
+  if (!data?.hasData) {
+    rtResults?.classList.add("hidden");
+    rtEmptyState?.classList.remove("hidden");
+    if (rtStatusEl) rtStatusEl.textContent = "No cached data loaded yet.";
+    return;
+  }
+
+  rtEmptyState?.classList.add("hidden");
+  rtResults?.classList.remove("hidden");
+
+  const summary = data.summary || {};
+  if (rtWorkItemCount) rtWorkItemCount.textContent = formatNumber(summary.workItemCount || 0);
+  if (rtAverageDays) rtAverageDays.textContent = formatResolvingTimeDays(summary.averageDays);
+  if (rtMedianDays) rtMedianDays.textContent = formatResolvingTimeDays(summary.medianDays);
+  if (rtRangeDays) rtRangeDays.textContent = formatResolvingTimeRange(summary.minDays, summary.maxDays);
+  if (rtChartAverage) rtChartAverage.textContent = formatResolvingTimeDays(summary.averageDays);
+
+  const grainLabel = DEV_METRICS_GRAIN_LABELS[data.grain] || data.grain;
+  if (rtChartHint) {
+    rtChartHint.textContent = `${grainLabel} buckets by resolved date${
+      data.areaPath ? ` · ${data.areaPath}` : ""
+    }`;
+  }
+
+  renderTrendChart(rtChartEl, {
+    points: data.points || [],
+    formatY: (value) => formatResolvingTimeDays(value),
+    yMin: 0,
+    emptyMessage: "No resolving time data in this date range.",
+  });
+
+  if (rtStatusEl) {
+    rtStatusEl.textContent = `Last refreshed: ${formatDateTime(data.fetchedAt)} · Filtered ${rangeLabel(data)}${
+      data.areaPath ? ` · ${data.areaPath}` : ""
+    }`;
+  }
+}
+
 function persistPullRequestsChartFilters() {
   if (prXAxisSelect) {
     localStorage.setItem(PR_X_AXIS_KEY, prXAxisSelect.value);
@@ -847,6 +958,20 @@ function restorePullRequestsChartFilters() {
     }
   } catch {
     // Ignore invalid saved author filters.
+  }
+}
+
+function persistResolvingTimeChartFilters() {
+  if (rtXAxisSelect) {
+    localStorage.setItem(RT_X_AXIS_KEY, rtXAxisSelect.value);
+  }
+}
+
+function restoreResolvingTimeChartFilters() {
+  const savedX = localStorage.getItem(RT_X_AXIS_KEY);
+  if (savedX && rtXAxisSelect) {
+    const valid = [...rtXAxisSelect.options].some((option) => option.value === savedX);
+    if (valid) rtXAxisSelect.value = savedX;
   }
 }
 
@@ -1130,6 +1255,7 @@ function fillAreaPathOptions(areaPaths) {
   fillAreaPathSelect(trendAreaPathSelect, areaPaths);
   fillAreaPathSelect(areaPathSelect, areaPaths);
   fillAreaPathSelect(cmpAreaPathSelect, areaPaths);
+  fillAreaPathSelect(rtAreaPathSelect, areaPaths);
   syncTrendAreaPathFilter();
 }
 
@@ -1178,6 +1304,24 @@ async function applyPullRequestsFilters() {
 
   fillAuthorOptions(data.pullRequests?.availableAuthors || [], savedAuthors);
   renderPullRequestsDashboard(data.pullRequests);
+}
+
+async function applyResolvingTimeFilters() {
+  const requestId = ++latestResolvingTimeRequestId;
+  setResolvingTimeError("");
+  rtResults?.classList.add("is-stale");
+
+  const filters = getResolvingTimeFilters();
+  const response = await fetch(`/api/resolving-time${buildResolvingTimeQuery(filters)}`);
+  if (!response.ok) {
+    throw new Error("Failed to load resolving time from cache.");
+  }
+
+  const data = await response.json();
+  if (requestId !== latestResolvingTimeRequestId) return;
+
+  fillAreaPathOptions(data.areaPaths);
+  renderResolvingTime(data.resolvingTime);
 }
 
 async function applyReposFilters() {
@@ -1320,18 +1464,21 @@ async function refreshData() {
   setReposError("");
   setWorkItemsError("");
   setPullRequestsError("");
+  setResolvingTimeError("");
   const previousStatus = statusEl?.textContent;
   const previousCmpStatus = cmpStatusEl?.textContent;
   const previousTrendStatus = trendStatusEl?.textContent;
   const previousReposStatus = reposStatusEl?.textContent;
   const previousWiStatus = wiStatusEl?.textContent;
   const previousPrStatus = prStatusEl?.textContent;
+  const previousRtStatus = rtStatusEl?.textContent;
   if (statusEl) statusEl.textContent = "Refreshing from Azure DevOps and SonarCloud…";
   if (cmpStatusEl) cmpStatusEl.textContent = "Refreshing from Azure DevOps and SonarCloud…";
   if (trendStatusEl) trendStatusEl.textContent = "Refreshing from Azure DevOps and SonarCloud…";
   if (reposStatusEl) reposStatusEl.textContent = "Refreshing from Azure DevOps and SonarCloud…";
   if (wiStatusEl) wiStatusEl.textContent = "Refreshing from Azure DevOps and SonarCloud…";
   if (prStatusEl) prStatusEl.textContent = "Refreshing from Azure DevOps and SonarCloud…";
+  if (rtStatusEl) rtStatusEl.textContent = "Refreshing from Azure DevOps and SonarCloud…";
 
   try {
     const response = await fetch("/api/refresh", { method: "POST" });
@@ -1349,12 +1496,14 @@ async function refreshData() {
     setReposError(message);
     setWorkItemsError(message);
     setPullRequestsError(message);
+    setResolvingTimeError(message);
     if (statusEl) statusEl.textContent = previousStatus;
     if (cmpStatusEl) cmpStatusEl.textContent = previousCmpStatus;
     if (trendStatusEl) trendStatusEl.textContent = previousTrendStatus;
     if (reposStatusEl) reposStatusEl.textContent = previousReposStatus;
     if (wiStatusEl) wiStatusEl.textContent = previousWiStatus;
     if (prStatusEl) prStatusEl.textContent = previousPrStatus;
+    if (rtStatusEl) rtStatusEl.textContent = previousRtStatus;
     metricsGrid?.classList.remove("is-stale");
     devMetricsChartSection?.classList.remove("is-stale");
     cmpMetricsGrid?.classList.remove("is-stale");
@@ -1362,6 +1511,7 @@ async function refreshData() {
     reposTableCard?.classList.remove("is-stale");
     wiResults?.classList.remove("is-stale");
     prResults?.classList.remove("is-stale");
+    rtResults?.classList.remove("is-stale");
   } finally {
     setRefreshing(false);
   }
@@ -1435,6 +1585,12 @@ function onPullRequestsFiltersChanged() {
   reloadPullRequests();
 }
 
+function onResolvingTimeFiltersChanged() {
+  persistPageDates("resolving-time");
+  persistResolvingTimeChartFilters();
+  reloadResolvingTime();
+}
+
 function onReposFiltersChanged() {
   persistPageDates("repos");
   reloadRepos();
@@ -1483,6 +1639,13 @@ function reloadPullRequests() {
   });
 }
 
+function reloadResolvingTime() {
+  applyResolvingTimeFilters().catch((error) => {
+    rtResults?.classList.remove("is-stale");
+    setResolvingTimeError(error instanceof Error ? error.message : "Failed to apply filters.");
+  });
+}
+
 function reloadRepos() {
   applyReposFilters().catch((error) => {
     reposTableCard.classList.remove("is-stale");
@@ -1496,6 +1659,7 @@ function reloadCurrentDashboard() {
   if (currentDashboardId === "repos") return applyReposFilters();
   if (currentDashboardId === "work-items") return applyWorkItemsFilters();
   if (currentDashboardId === "pull-requests") return applyPullRequestsFilters();
+  if (currentDashboardId === "resolving-time") return applyResolvingTimeFilters();
   return applyFilters();
 }
 
@@ -1529,6 +1693,12 @@ function clearPullRequestsFilters() {
   prStartDateInput.value = "";
   prEndDateInput.value = "";
   onPullRequestsFiltersChanged();
+}
+
+function clearResolvingTimeFilters() {
+  rtStartDateInput.value = "";
+  rtEndDateInput.value = "";
+  onResolvingTimeFiltersChanged();
 }
 
 function clearReposFilters() {
@@ -1571,6 +1741,10 @@ async function init() {
           prStartDateInput.min = cutDate;
           prStartDateInput.value = cutDate;
         }
+        if (rtStartDateInput) {
+          rtStartDateInput.min = cutDate;
+          rtStartDateInput.value = cutDate;
+        }
       }
       if (endDateInput) endDateInput.value = today;
       if (cmpEndDateInput) cmpEndDateInput.value = today;
@@ -1578,6 +1752,7 @@ async function init() {
       if (reposEndDateInput) reposEndDateInput.value = today;
       if (wiEndDateInput) wiEndDateInput.value = today;
       if (prEndDateInput) prEndDateInput.value = today;
+      if (rtEndDateInput) rtEndDateInput.value = today;
       const lastYear = String(Number(today.slice(0, 4)) - 1);
       if (cmpStartDate2Input) cmpStartDate2Input.value = `${lastYear}-01-01`;
       if (cmpEndDate2Input) cmpEndDate2Input.value = `${lastYear}-12-31`;
@@ -1590,6 +1765,7 @@ async function init() {
   restoreTrendMetric();
   restoreDevMetricsChartFilters();
   restorePullRequestsChartFilters();
+  restoreResolvingTimeChartFilters();
   syncTrendAreaPathFilter();
   await reloadCurrentDashboard();
 }
@@ -1637,6 +1813,7 @@ function bindPage() {
   reposClearFiltersBtn?.addEventListener("click", clearReposFilters);
   wiClearFiltersBtn?.addEventListener("click", clearWorkItemsFilters);
   prClearFiltersBtn?.addEventListener("click", clearPullRequestsFilters);
+  rtClearFiltersBtn?.addEventListener("click", clearResolvingTimeFilters);
   startDateInput?.addEventListener("change", onFiltersChanged);
   endDateInput?.addEventListener("change", onFiltersChanged);
   areaPathSelect?.addEventListener("change", onFiltersChanged);
@@ -1660,6 +1837,10 @@ function bindPage() {
   prEndDateInput?.addEventListener("change", onPullRequestsFiltersChanged);
   prAuthorsSelect?.addEventListener("change", onPullRequestsFiltersChanged);
   prXAxisSelect?.addEventListener("change", onPullRequestsFiltersChanged);
+  rtStartDateInput?.addEventListener("change", onResolvingTimeFiltersChanged);
+  rtEndDateInput?.addEventListener("change", onResolvingTimeFiltersChanged);
+  rtXAxisSelect?.addEventListener("change", onResolvingTimeFiltersChanged);
+  rtAreaPathSelect?.addEventListener("change", onResolvingTimeFiltersChanged);
 
   for (const [key, tab] of Object.entries(wiChartTabs)) {
     tab?.addEventListener("click", () => setWorkItemsChartTab(key));
@@ -1712,6 +1893,7 @@ function bindPage() {
     reposClearBtn: reposClearFiltersBtn,
     workItemsClearBtn: wiClearFiltersBtn,
     pullRequestsClearBtn: prClearFiltersBtn,
+    resolvingTimeClearBtn: rtClearFiltersBtn,
     onDevMetricsRange: ({ start, end }) => {
       startDateInput.value = start;
       endDateInput.value = end;
@@ -1744,6 +1926,11 @@ function bindPage() {
       prEndDateInput.value = end;
       onPullRequestsFiltersChanged();
     },
+    onResolvingTimeRange: ({ start, end }) => {
+      rtStartDateInput.value = start;
+      rtEndDateInput.value = end;
+      onResolvingTimeFiltersChanged();
+    },
   });
 }
 
@@ -1760,5 +1947,6 @@ if (!shouldRedirectLegacyHash) {
     setReposError(message);
     setWorkItemsError(message);
     setPullRequestsError(message);
+    setResolvingTimeError(message);
   });
 }

@@ -1,0 +1,81 @@
+    <section id="dashboard-resolving-time" class="page dashboard-view">
+      <header class="header">
+        <div>
+          <p class="eyebrow" data-brand-mark>{{branding.author}} / {{branding.product}}</p>
+          <h1>Resolving Time</h1>
+          <p id="rtStatus" class="status">Loading…</p>
+        </div>
+      </header>
+
+      <section class="filters" aria-label="Resolving time filters">
+        <label class="filter-field">
+          <span>Start date</span>
+          <input id="rtStartDate" type="date" />
+        </label>
+        <label class="filter-field">
+          <span>End date</span>
+          <input id="rtEndDate" type="date" />
+        </label>
+        <button id="rtClearFiltersBtn" type="button" class="secondary-btn">
+          Clear dates
+        </button>
+        <label class="filter-field">
+          <span>X axis</span>
+          <select id="rtXAxis">
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="monthly">Monthly</option>
+            <option value="quarterly">Quarterly</option>
+            <option value="yearly">Yearly</option>
+          </select>
+        </label>
+        <label class="filter-field filter-field-area">
+          <span>Area path</span>
+          <select id="rtAreaPath">
+            <option value="">All area paths</option>
+          </select>
+        </label>
+      </section>
+
+      <section id="rtEmptyState" class="empty hidden">
+        <p>No local data yet. Click <strong>Refresh data</strong> to load from Azure DevOps and SonarCloud.</p>
+      </section>
+
+      <section id="rtResults" class="trend-results hidden">
+        <div class="metrics-row metrics-row-4">
+          <article class="metric">
+            <h2>Work Items</h2>
+            <p id="rtWorkItemCount" class="value">—</p>
+            <p class="metric-hint">Resolved in range with Active → Resolved history</p>
+          </article>
+          <article class="metric">
+            <h2>Average</h2>
+            <p id="rtAverageDays" class="value">—</p>
+            <p class="metric-hint">Mean time from Active to Resolved</p>
+          </article>
+          <article class="metric">
+            <h2>Median</h2>
+            <p id="rtMedianDays" class="value">—</p>
+            <p class="metric-hint">Typical time from Active to Resolved</p>
+          </article>
+          <article class="metric">
+            <h2>Range</h2>
+            <p id="rtRangeDays" class="value">—</p>
+            <p class="metric-hint">Min to max resolve time</p>
+          </article>
+        </div>
+
+        <section class="chart-card">
+          <div class="chart-card-head">
+            <div>
+              <h2>Average resolving time</h2>
+              <p id="rtChartHint" class="metric-hint"></p>
+            </div>
+            <p id="rtChartAverage" class="value">—</p>
+          </div>
+          <div id="rtChart" class="trend-chart" aria-label="Average resolving time line chart"></div>
+        </section>
+      </section>
+
+      <p id="rtError" class="error hidden"></p>
+    </section>

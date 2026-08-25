@@ -8,8 +8,10 @@ import { computeTrend } from "./trend.js";
 import { computeRepoSummaries } from "./repos.js";
 import { computeWorkItems } from "./workItems.js";
 import { computeDevMetricsChart } from "./devMetricsChart.js";
+import { computeResolvingTime } from "./resolvingTime.js";
 import { getWorkItemsPage, getPullRequestsPage } from "./details.js";
 import { fetchClosedWorkItems } from "./sources/adoWorkItems.js";
+import { fetchWorkItemStatusHistory } from "./sources/adoWorkItemStatusHistory.js";
 import { computePullRequests } from "./pullRequests.js";
 import { fetchPullRequests } from "./sources/adoPullRequests.js";
 import { fetchSonarMeasures } from "./sources/sonarCloud.js";
@@ -27,6 +29,7 @@ const DASHBOARDS = {
   "work-items": { name: "Work Items" },
   "pull-requests": { name: "Pull Requests" },
   repos: { name: "Repos" },
+  "resolving-time": { name: "Resolving Time" },
 };
 
 const PATH_TO_DASHBOARD = {
@@ -38,6 +41,7 @@ const PATH_TO_DASHBOARD = {
   "/work-items": "work-items",
   "/pull-requests": "pull-requests",
   "/repos": "repos",
+  "/resolving-time": "resolving-time",
 };
 
 app.use(express.json());
@@ -206,6 +210,18 @@ app.get("/api/pull-requests", (req, res) => {
   });
 });
 
+app.get("/api/resolving-time", (req, res) => {
+  const cache = readCache();
+  const filters = readWorkItemsFilters(req);
+  const grain = typeof req.query.grain === "string" ? req.query.grain : "daily";
+  res.json({
+    resolvingTime: computeResolvingTime(cache, { ...filters, grain }),
+    areaPaths: config.azureDevOps.areaPathsOfInterest,
+    refreshing: refreshInProgress,
+    cutDate: cache?.cutDate || config.cutDate,
+  });
+});
+
 app.get("/api/details/work-items", (req, res) => {
   const cache = readCache();
   res.json(getWorkItemsPage(cache, readDetailQuery(req)));
@@ -224,10 +240,11 @@ app.post("/api/refresh", async (req, res) => {
 
   refreshInProgress = true;
   try {
-    const [workItems, pullRequests, sonar] = await Promise.all([
-      fetchClosedWorkItems(),
+    const workItems = await fetchClosedWorkItems();
+    const [pullRequests, sonar, workItemStatusHistory] = await Promise.all([
       fetchPullRequests(),
       fetchSonarMeasures(),
+      fetchWorkItemStatusHistory(workItems.map((item) => item.id)),
     ]);
 
     const cache = {
@@ -236,9 +253,15 @@ app.post("/api/refresh", async (req, res) => {
       workItems,
       pullRequests,
       sonar,
+      workItemStatusHistory,
     };
 
-    if (!Array.isArray(workItems) || !Array.isArray(pullRequests) || !Array.isArray(sonar)) {
+    if (
+      !Array.isArray(workItems) ||
+      !Array.isArray(pullRequests) ||
+      !Array.isArray(sonar) ||
+      !Array.isArray(workItemStatusHistory)
+    ) {
       throw new Error("Refresh returned incomplete data. Previous cache was kept.");
     }
 

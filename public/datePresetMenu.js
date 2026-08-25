@@ -114,12 +114,14 @@ export function attachRangePresetMenus({
   reposClearBtn,
   workItemsClearBtn,
   pullRequestsClearBtn,
+  resolvingTimeClearBtn,
   onDevMetricsRange,
   onComparisonRange,
   onTrendRange,
   onReposRange,
   onWorkItemsRange,
   onPullRequestsRange,
+  onResolvingTimeRange,
 }) {
   attachRangePresetMenu(devMetricsClearBtn, DEV_METRICS_RANGE_PRESETS, (id) => {
     onDevMetricsRange?.(resolveDevMetricsRange(id));
@@ -145,6 +147,11 @@ export function attachRangePresetMenus({
   if (pullRequestsClearBtn && onPullRequestsRange) {
     attachRangePresetMenu(pullRequestsClearBtn, DEV_METRICS_RANGE_PRESETS, (id) => {
       onPullRequestsRange(resolveDevMetricsRange(id));
+    });
+  }
+  if (resolvingTimeClearBtn && onResolvingTimeRange) {
+    attachRangePresetMenu(resolvingTimeClearBtn, DEV_METRICS_RANGE_PRESETS, (id) => {
+      onResolvingTimeRange(resolveDevMetricsRange(id));
     });
   }
   bindGlobalMenuDismiss();
