@@ -209,6 +209,7 @@ h1 {
 }
 
 .filter-field input[type="date"],
+.filter-field input[type="number"],
 .filter-field select {
   appearance: none;
   border: 1px solid var(--border);
@@ -217,6 +218,30 @@ h1 {
   color: var(--ink);
   font: inherit;
   padding: 0.65rem 0.75rem;
+}
+
+.filter-field input[type="number"] {
+  width: 8.5rem;
+}
+
+.filter-field-check {
+  min-width: 0;
+}
+
+.filter-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 2.7rem;
+  color: var(--ink);
+  font-size: 0.9rem;
+}
+
+.filter-check input[type="checkbox"] {
+  width: 1.05rem;
+  height: 1.05rem;
+  accent-color: var(--accent, #3dba7a);
+  cursor: pointer;
 }
 
 .filter-field select {
@@ -256,6 +281,7 @@ h1 {
 }
 
 .filter-field input[type="date"]:focus,
+.filter-field input[type="number"]:focus,
 .filter-field select:focus {
   outline: 2px solid rgba(61, 186, 122, 0.45);
   outline-offset: 1px;

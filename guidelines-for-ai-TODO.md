@@ -9,3 +9,4 @@ work items --> use filter by area path, disable filter by author
 pull requests --> use filter by author, disable filter by area path
 what about sonar data?
 
+save/restore filter values (localstorage)

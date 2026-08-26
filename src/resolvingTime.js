@@ -141,6 +141,26 @@ function scatterSeries(records) {
     });
 }
 
+function parseMaxResolvingTimeDays(value) {
+  if (value === undefined || value === null || value === "") return null;
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0) return null;
+  return parsed;
+}
+
+function applyResolvingTimeValueFilters(records, filters = {}) {
+  const maxDays = parseMaxResolvingTimeDays(filters.maxDays);
+  const ignoreZero = filters.ignoreZero !== false && filters.ignoreZero !== "false";
+
+  return records.filter((record) => {
+    const days = record.resolvingTimeDays;
+    if (!Number.isFinite(days)) return false;
+    if (ignoreZero && days === 0) return false;
+    if (maxDays !== null && days > maxDays) return false;
+    return true;
+  });
+}
+
 function emptyResult(filters, grain) {
   return {
     hasData: false,
@@ -148,6 +168,8 @@ function emptyResult(filters, grain) {
     startDate: filters.startDate || null,
     endDate: filters.endDate || null,
     areaPath: filters.areaPath || null,
+    maxDays: parseMaxResolvingTimeDays(filters.maxDays),
+    ignoreZero: filters.ignoreZero !== false && filters.ignoreZero !== "false",
     grain,
     summary: summarizeResolvingTimeRecords([]),
     points: [],
@@ -160,11 +182,20 @@ function emptyResult(filters, grain) {
  * Average time from earliest Active to earliest Resolved, bucketed by resolved date.
  *
  * @param {object|null} cache
- * @param {{ startDate?: string|null, endDate?: string|null, areaPath?: string|null, grain?: string|null }} [filters]
+ * @param {{
+ *   startDate?: string|null,
+ *   endDate?: string|null,
+ *   areaPath?: string|null,
+ *   grain?: string|null,
+ *   maxDays?: number|string|null,
+ *   ignoreZero?: boolean|string|null,
+ * }} [filters]
  */
 export function computeResolvingTime(cache, filters = {}) {
   const grain = CHART_GRAINS.includes(filters.grain) ? filters.grain : "daily";
   const areaPath = filters.areaPath || null;
+  const maxDays = parseMaxResolvingTimeDays(filters.maxDays);
+  const ignoreZero = filters.ignoreZero !== false && filters.ignoreZero !== "false";
 
   if (!cache?.workItemStatusHistory?.length) {
     return emptyResult(filters, grain);
@@ -177,8 +208,9 @@ export function computeResolvingTime(cache, filters = {}) {
   const start = toBoundDate(startDate, "start");
   const end = toBoundDate(endDate, "end");
 
-  const records = allRecords.filter((record) =>
-    isWithinRange(record.resolvedDate, start, end)
+  const records = applyResolvingTimeValueFilters(
+    allRecords.filter((record) => isWithinRange(record.resolvedDate, start, end)),
+    { maxDays, ignoreZero }
   );
   const keys = enumerateBuckets(startDate, endDate, grain);
 
@@ -188,6 +220,8 @@ export function computeResolvingTime(cache, filters = {}) {
     startDate,
     endDate,
     areaPath,
+    maxDays,
+    ignoreZero,
     grain,
     summary: summarizeResolvingTimeRecords(records),
     points: bucketAverageSeries(records, keys, grain),

@@ -207,12 +207,16 @@ const prChartPanels = {
 const PR_X_AXIS_KEY = "brheringer.dashboard-pull-requests.x-axis";
 const PR_AUTHORS_KEY = "brheringer.dashboard-pull-requests.authors";
 const RT_X_AXIS_KEY = "brheringer.dashboard-resolving-time.x-axis";
+const RT_MAX_DAYS_KEY = "brheringer.dashboard-resolving-time.max-days";
+const RT_IGNORE_ZERO_KEY = "brheringer.dashboard-resolving-time.ignore-zero";
 
 const rtClearFiltersBtn = document.getElementById("rtClearFiltersBtn");
 const rtStartDateInput = document.getElementById("rtStartDate");
 const rtEndDateInput = document.getElementById("rtEndDate");
 const rtXAxisSelect = document.getElementById("rtXAxis");
 const rtAreaPathSelect = document.getElementById("rtAreaPath");
+const rtMaxDaysInput = document.getElementById("rtMaxDays");
+const rtIgnoreZeroInput = document.getElementById("rtIgnoreZero");
 const rtStatusEl = document.getElementById("rtStatus");
 const rtEmptyState = document.getElementById("rtEmptyState");
 const rtResults = document.getElementById("rtResults");
@@ -408,11 +412,15 @@ function getPullRequestsFilters() {
 }
 
 function getResolvingTimeFilters() {
+  const maxDaysRaw = rtMaxDaysInput?.value?.trim() || "";
+  const maxDays = maxDaysRaw === "" ? null : Number(maxDaysRaw);
   return {
     startDate: rtStartDateInput?.value || null,
     endDate: rtEndDateInput?.value || null,
     areaPath: rtAreaPathSelect?.value || null,
     grain: rtXAxisSelect?.value || "daily",
+    maxDays: Number.isFinite(maxDays) && maxDays >= 0 ? maxDays : null,
+    ignoreZero: rtIgnoreZeroInput ? rtIgnoreZeroInput.checked : true,
   };
 }
 
@@ -430,7 +438,12 @@ function buildPullRequestsQuery(filters = getPullRequestsFilters()) {
 
 function buildResolvingTimeQuery(filters = getResolvingTimeFilters()) {
   return buildQuery(
-    { grain: filters.grain, areaPath: filters.areaPath },
+    {
+      grain: filters.grain,
+      areaPath: filters.areaPath,
+      maxDays: filters.maxDays,
+      ignoreZero: filters.ignoreZero ? "true" : "false",
+    },
     filters
   );
 }
@@ -1072,6 +1085,12 @@ function persistResolvingTimeChartFilters() {
   if (rtXAxisSelect) {
     localStorage.setItem(RT_X_AXIS_KEY, rtXAxisSelect.value);
   }
+  if (rtMaxDaysInput) {
+    localStorage.setItem(RT_MAX_DAYS_KEY, rtMaxDaysInput.value.trim());
+  }
+  if (rtIgnoreZeroInput) {
+    localStorage.setItem(RT_IGNORE_ZERO_KEY, rtIgnoreZeroInput.checked ? "true" : "false");
+  }
 }
 
 function restoreResolvingTimeChartFilters() {
@@ -1079,6 +1098,17 @@ function restoreResolvingTimeChartFilters() {
   if (savedX && rtXAxisSelect) {
     const valid = [...rtXAxisSelect.options].some((option) => option.value === savedX);
     if (valid) rtXAxisSelect.value = savedX;
+  }
+  if (rtMaxDaysInput && localStorage.getItem(RT_MAX_DAYS_KEY) !== null) {
+    rtMaxDaysInput.value = localStorage.getItem(RT_MAX_DAYS_KEY) || "";
+  }
+  if (rtIgnoreZeroInput) {
+    const savedIgnoreZero = localStorage.getItem(RT_IGNORE_ZERO_KEY);
+    if (savedIgnoreZero === null) {
+      rtIgnoreZeroInput.checked = true;
+    } else {
+      rtIgnoreZeroInput.checked = savedIgnoreZero !== "false";
+    }
   }
 }
 
@@ -1949,6 +1979,8 @@ function bindPage() {
   rtEndDateInput?.addEventListener("change", onResolvingTimeFiltersChanged);
   rtXAxisSelect?.addEventListener("change", onResolvingTimeFiltersChanged);
   rtAreaPathSelect?.addEventListener("change", onResolvingTimeFiltersChanged);
+  rtMaxDaysInput?.addEventListener("change", onResolvingTimeFiltersChanged);
+  rtIgnoreZeroInput?.addEventListener("change", onResolvingTimeFiltersChanged);
 
   for (const [key, tab] of Object.entries(wiChartTabs)) {
     tab?.addEventListener("click", () => setWorkItemsChartTab(key));

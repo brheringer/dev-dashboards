@@ -35,6 +35,17 @@
             <option value="">All area paths</option>
           </select>
         </label>
+        <label class="filter-field">
+          <span>Ignore if &gt; days</span>
+          <input id="rtMaxDays" type="number" min="0" step="1" placeholder="No limit" />
+        </label>
+        <label class="filter-field filter-field-check">
+          <span>Ignore zero</span>
+          <span class="filter-check">
+            <input id="rtIgnoreZero" type="checkbox" checked />
+            <span>Exclude 0-day items</span>
+          </span>
+        </label>
       </section>
 
       <section id="rtEmptyState" class="empty hidden">

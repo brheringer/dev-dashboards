@@ -107,6 +107,24 @@ function readWorkItemsFilters(req) {
   };
 }
 
+function readResolvingTimeFilters(req) {
+  const grain = typeof req.query.grain === "string" ? req.query.grain : "daily";
+  const maxDaysRaw = typeof req.query.maxDays === "string" ? req.query.maxDays.trim() : "";
+  const maxDays = maxDaysRaw === "" ? null : Number(maxDaysRaw);
+  const ignoreZeroRaw = req.query.ignoreZero;
+  const ignoreZero =
+    ignoreZeroRaw === undefined || ignoreZeroRaw === null
+      ? true
+      : !(ignoreZeroRaw === "false" || ignoreZeroRaw === "0" || ignoreZeroRaw === false);
+
+  return {
+    ...readWorkItemsFilters(req),
+    grain,
+    maxDays: Number.isFinite(maxDays) && maxDays >= 0 ? maxDays : null,
+    ignoreZero,
+  };
+}
+
 function readPullRequestsFilters(req) {
   const authors = [];
   const rawAuthors = req.query.authors;
@@ -212,10 +230,9 @@ app.get("/api/pull-requests", (req, res) => {
 
 app.get("/api/resolving-time", (req, res) => {
   const cache = readCache();
-  const filters = readWorkItemsFilters(req);
-  const grain = typeof req.query.grain === "string" ? req.query.grain : "daily";
+  const filters = readResolvingTimeFilters(req);
   res.json({
-    resolvingTime: computeResolvingTime(cache, { ...filters, grain }),
+    resolvingTime: computeResolvingTime(cache, filters),
     areaPaths: config.azureDevOps.areaPathsOfInterest,
     refreshing: refreshInProgress,
     cutDate: cache?.cutDate || config.cutDate,
