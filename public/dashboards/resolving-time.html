@@ -86,6 +86,16 @@
           >
             Scatter
           </button>
+          <button
+            id="rtTabDistribution"
+            type="button"
+            class="tab"
+            role="tab"
+            aria-selected="false"
+            aria-controls="rtPanelDistribution"
+          >
+            Distribution
+          </button>
         </div>
 
         <div id="rtPanelAverage" class="tab-panel" role="tabpanel">
@@ -111,6 +121,23 @@
               <p id="rtScatterCount" class="value">—</p>
             </div>
             <div id="rtScatterChart" class="trend-chart" aria-label="Resolving time scatter chart"></div>
+          </section>
+        </div>
+
+        <div id="rtPanelDistribution" class="tab-panel hidden" role="tabpanel" hidden>
+          <section class="chart-card">
+            <div class="chart-card-head">
+              <div>
+                <h2>Resolving time distribution</h2>
+                <p id="rtDistributionHint" class="metric-hint"></p>
+              </div>
+              <p id="rtDistributionStd" class="value">—</p>
+            </div>
+            <div
+              id="rtDistributionChart"
+              class="trend-chart"
+              aria-label="Resolving time normal distribution chart"
+            ></div>
           </section>
         </div>
       </section>

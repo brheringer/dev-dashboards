@@ -1,6 +1,6 @@
 import { attachDatePresetMenus, attachRangePresetMenus } from "./datePresetMenu.js";
 import { savePageDates, loadPageDates } from "./dateStorage.js";
-import { renderTrendChart, renderScatterChart } from "./trendChart.js";
+import { renderTrendChart, renderScatterChart, renderDistributionChart } from "./trendChart.js";
 import { renderDevMetricsChart } from "./devMetricsChart.js";
 import {
   renderPieChart,
@@ -227,13 +227,18 @@ const rtChartAverage = document.getElementById("rtChartAverage");
 const rtScatterChartEl = document.getElementById("rtScatterChart");
 const rtScatterHint = document.getElementById("rtScatterHint");
 const rtScatterCount = document.getElementById("rtScatterCount");
+const rtDistributionChartEl = document.getElementById("rtDistributionChart");
+const rtDistributionHint = document.getElementById("rtDistributionHint");
+const rtDistributionStd = document.getElementById("rtDistributionStd");
 const rtChartTabs = {
   average: document.getElementById("rtTabAverage"),
   scatter: document.getElementById("rtTabScatter"),
+  distribution: document.getElementById("rtTabDistribution"),
 };
 const rtChartPanels = {
   average: document.getElementById("rtPanelAverage"),
   scatter: document.getElementById("rtPanelScatter"),
+  distribution: document.getElementById("rtPanelDistribution"),
 };
 
 function metricSet(prefix) {
@@ -915,10 +920,23 @@ function renderPullRequestsDashboard(data) {
   }
 }
 
+function resolvingTimeStdDev(points) {
+  const values = (points || [])
+    .map((point) => Number(point.value))
+    .filter(Number.isFinite);
+  if (values.length < 2) return null;
+  const avg = values.reduce((sum, value) => sum + value, 0) / values.length;
+  const variance =
+    values.reduce((sum, value) => sum + (value - avg) ** 2, 0) / (values.length - 1);
+  return Math.sqrt(variance);
+}
+
 function paintResolvingTimeCharts(data) {
   const grainLabel = DEV_METRICS_GRAIN_LABELS[data.grain] || data.grain;
   const areaHint = data.areaPath ? ` · ${data.areaPath}` : "";
   const summary = data.summary || {};
+  const scatterPoints = data.scatterPoints || [];
+  const stdDev = resolvingTimeStdDev(scatterPoints);
 
   if (rtChartHint) {
     rtChartHint.textContent = `${grainLabel} buckets by resolved date${areaHint}`;
@@ -930,14 +948,33 @@ function paintResolvingTimeCharts(data) {
   if (rtScatterCount) {
     rtScatterCount.textContent = formatNumber(summary.workItemCount || 0);
   }
+  if (rtDistributionHint) {
+    rtDistributionHint.textContent = `histogram with fitted normal curve · mean ${formatResolvingTimeDays(
+      summary.averageDays
+    )}${areaHint}`;
+  }
+  if (rtDistributionStd) {
+    rtDistributionStd.textContent =
+      stdDev === null ? "—" : `σ ${formatResolvingTimeDays(stdDev)}`;
+  }
 
   if (activeRtChartTab === "scatter") {
     renderScatterChart(rtScatterChartEl, {
-      points: data.scatterPoints || [],
+      points: scatterPoints,
       formatY: (value) => formatResolvingTimeDays(value),
       formatTooltip: (point) =>
         `#${point.workItemId} · ${formatAxisDateForTooltip(point.date)} · ${formatResolvingTimeDays(point.value)}`,
       yMin: 0,
+      emptyMessage: "No resolving time data in this date range.",
+    });
+    return;
+  }
+
+  if (activeRtChartTab === "distribution") {
+    renderDistributionChart(rtDistributionChartEl, {
+      values: scatterPoints.map((point) => point.value),
+      formatX: (value) => formatResolvingTimeDays(value),
+      formatY: (value) => formatNumber(Math.round(value)),
       emptyMessage: "No resolving time data in this date range.",
     });
     return;

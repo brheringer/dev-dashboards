@@ -715,6 +715,26 @@ h1 {
   stroke: none;
 }
 
+.distribution-bar {
+  fill: var(--accent);
+  fill-opacity: 0.45;
+  stroke: none;
+}
+
+.distribution-curve {
+  fill: none;
+  stroke: #8fd9b0;
+  stroke-width: 2.25;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.distribution-mean {
+  stroke: rgba(232, 238, 233, 0.45);
+  stroke-width: 1.25;
+  stroke-dasharray: 5 4;
+}
+
 .trend-hover-line {
   stroke: rgba(232, 238, 233, 0.35);
   stroke-width: 1;

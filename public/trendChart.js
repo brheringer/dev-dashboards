@@ -496,3 +496,229 @@ export function renderScatterChart(container, options) {
     scatterObservers.set(container, observer);
   }
 }
+
+function mean(values) {
+  if (!values.length) return null;
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+
+function sampleStdDev(values, avg) {
+  if (values.length < 2 || avg === null) return 0;
+  const variance =
+    values.reduce((sum, value) => sum + (value - avg) ** 2, 0) / (values.length - 1);
+  return Math.sqrt(variance);
+}
+
+function normalPdf(x, mu, sigma) {
+  if (!Number.isFinite(sigma) || sigma <= 0) return 0;
+  const z = (x - mu) / sigma;
+  return Math.exp(-0.5 * z * z) / (sigma * Math.sqrt(2 * Math.PI));
+}
+
+function chooseBinCount(n) {
+  // Sturges' rule, clamped for readability.
+  return Math.max(5, Math.min(24, Math.ceil(Math.log2(n) + 1)));
+}
+
+function buildDistributionBins(values) {
+  const avg = mean(values);
+  const sigma = sampleStdDev(values, avg);
+  const dataMin = Math.min(...values);
+  const dataMax = Math.max(...values);
+
+  if (dataMin === dataMax) {
+    const center = dataMin;
+    const width = Math.max(Math.abs(center) * 0.1, 1);
+    return {
+      mean: avg,
+      stdDev: sigma,
+      bins: [{ start: center - width / 2, end: center + width / 2, count: values.length }],
+      binWidth: width,
+      xMin: center - width / 2,
+      xMax: center + width / 2,
+    };
+  }
+
+  const binCount = chooseBinCount(values.length);
+  const span = niceNumber(dataMax - dataMin, false);
+  const binWidth = niceNumber(span / binCount, true);
+  const xMin = Math.floor(dataMin / binWidth) * binWidth;
+  let xMax = Math.ceil(dataMax / binWidth) * binWidth;
+  if (xMax <= xMin) xMax = xMin + binWidth;
+
+  const bins = [];
+  for (let start = xMin; start < xMax - binWidth * 1e-9; start += binWidth) {
+    const end = start + binWidth;
+    bins.push({
+      start: Math.round(start * 1e6) / 1e6,
+      end: Math.round(end * 1e6) / 1e6,
+      count: 0,
+    });
+  }
+
+  for (const value of values) {
+    let index = Math.floor((value - xMin) / binWidth);
+    if (index < 0) index = 0;
+    if (index >= bins.length) index = bins.length - 1;
+    bins[index].count += 1;
+  }
+
+  return { mean: avg, stdDev: sigma, bins, binWidth, xMin, xMax };
+}
+
+function paintDistributionChart(container, options) {
+  const {
+    values = [],
+    formatX = (value) => String(value),
+    formatY = (value) => String(value),
+    emptyMessage = "No data in this date range.",
+  } = options;
+
+  container.replaceChildren();
+
+  const width = Math.max(container.clientWidth, 0);
+  const height = Math.max(container.clientHeight, 0);
+  if (width < 40 || height < 40) return;
+
+  const defined = values.filter((value) => Number.isFinite(Number(value))).map(Number);
+  if (!defined.length) {
+    const empty = document.createElement("p");
+    empty.className = "chart-empty";
+    empty.textContent = emptyMessage;
+    container.appendChild(empty);
+    return;
+  }
+
+  const distribution = buildDistributionBins(defined);
+  const { bins, binWidth, mean: mu, stdDev: sigma, xMin, xMax } = distribution;
+  const maxCount = Math.max(...bins.map((bin) => bin.count), 1);
+  const curveMax =
+    sigma > 0 ? defined.length * binWidth * normalPdf(mu, mu, sigma) : maxCount;
+  const yPeak = Math.max(maxCount, curveMax);
+  const ticks = niceTicks(0, yPeak);
+  const domainMin = ticks[0];
+  const domainMax = ticks[ticks.length - 1];
+  const domain = domainMax - domainMin || 1;
+  const xSpan = xMax - xMin || 1;
+
+  const pad = { top: 16, right: 18, bottom: 36, left: 58 };
+  const innerW = Math.max(width - pad.left - pad.right, 1);
+  const innerH = Math.max(height - pad.top - pad.bottom, 1);
+  const xAt = (value) => pad.left + ((value - xMin) / xSpan) * innerW;
+  const yAt = (value) => pad.top + innerH - ((value - domainMin) / domain) * innerH;
+
+  const ns = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(ns, "svg");
+  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+  svg.setAttribute("width", String(width));
+  svg.setAttribute("height", String(height));
+  svg.setAttribute("role", "img");
+  svg.classList.add("trend-svg");
+
+  for (const tick of ticks) {
+    const y = yAt(tick);
+    const grid = document.createElementNS(ns, "line");
+    grid.setAttribute("x1", String(pad.left));
+    grid.setAttribute("x2", String(pad.left + innerW));
+    grid.setAttribute("y1", String(y));
+    grid.setAttribute("y2", String(y));
+    grid.setAttribute("class", "trend-grid");
+    svg.appendChild(grid);
+
+    const label = document.createElementNS(ns, "text");
+    label.setAttribute("x", String(pad.left - 8));
+    label.setAttribute("y", String(y + 4));
+    label.setAttribute("text-anchor", "end");
+    label.setAttribute("class", "trend-axis-label");
+    label.textContent = formatY(tick);
+    svg.appendChild(label);
+  }
+
+  const xLabelValues = niceTicks(xMin, xMax, 5);
+  for (const value of xLabelValues) {
+    if (value < xMin - binWidth * 0.01 || value > xMax + binWidth * 0.01) continue;
+    const label = document.createElementNS(ns, "text");
+    label.setAttribute("x", String(xAt(value)));
+    label.setAttribute("y", String(height - 10));
+    label.setAttribute("text-anchor", "middle");
+    label.setAttribute("class", "trend-axis-label");
+    label.textContent = formatX(value);
+    svg.appendChild(label);
+  }
+
+  const tooltip = document.createElement("div");
+  tooltip.className = "trend-tooltip hidden";
+
+  const gap = Math.min(4, (innerW / bins.length) * 0.12);
+  for (const bin of bins) {
+    const x0 = xAt(bin.start) + gap / 2;
+    const x1 = xAt(bin.end) - gap / 2;
+    const barW = Math.max(x1 - x0, 1);
+    const y = yAt(bin.count);
+    const barH = Math.max(pad.top + innerH - y, 0);
+    const rect = document.createElementNS(ns, "rect");
+    rect.setAttribute("x", String(x0));
+    rect.setAttribute("y", String(y));
+    rect.setAttribute("width", String(barW));
+    rect.setAttribute("height", String(barH));
+    rect.setAttribute("rx", "4");
+    rect.setAttribute("class", "distribution-bar");
+    rect.addEventListener("mousemove", () => {
+      tooltip.textContent = `${formatX(bin.start)} – ${formatX(bin.end)} · ${formatY(bin.count)}`;
+      tooltip.classList.remove("hidden");
+      const tipW = tooltip.offsetWidth;
+      const cx = x0 + barW / 2;
+      tooltip.style.left = `${Math.min(Math.max(cx - tipW / 2, 8), width - tipW - 8)}px`;
+      tooltip.style.top = `${Math.max(y - 36, 8)}px`;
+    });
+    rect.addEventListener("mouseleave", () => tooltip.classList.add("hidden"));
+    svg.appendChild(rect);
+  }
+
+  if (sigma > 0 && Number.isFinite(mu)) {
+    const curvePoints = [];
+    const steps = Math.max(60, bins.length * 8);
+    for (let i = 0; i <= steps; i += 1) {
+      const x = xMin + (xSpan * i) / steps;
+      const density = defined.length * binWidth * normalPdf(x, mu, sigma);
+      curvePoints.push({ x: xAt(x), y: yAt(density) });
+    }
+
+    const curve = document.createElementNS(ns, "path");
+    curve.setAttribute("d", linePath(curvePoints));
+    curve.setAttribute("class", "distribution-curve");
+    svg.appendChild(curve);
+
+    const meanX = xAt(mu);
+    const meanLine = document.createElementNS(ns, "line");
+    meanLine.setAttribute("x1", String(meanX));
+    meanLine.setAttribute("x2", String(meanX));
+    meanLine.setAttribute("y1", String(pad.top));
+    meanLine.setAttribute("y2", String(pad.top + innerH));
+    meanLine.setAttribute("class", "distribution-mean");
+    svg.appendChild(meanLine);
+  }
+
+  container.appendChild(svg);
+  container.appendChild(tooltip);
+}
+
+const distributionObservers = new WeakMap();
+
+export function renderDistributionChart(container, options) {
+  if (!container) return;
+  container._distributionChartOptions = options;
+  paintDistributionChart(container, options);
+
+  if (!distributionObservers.has(container)) {
+    let lastWidth = container.clientWidth;
+    const observer = new ResizeObserver(() => {
+      const width = container.clientWidth;
+      if (width === lastWidth) return;
+      lastWidth = width;
+      paintDistributionChart(container, container._distributionChartOptions || options);
+    });
+    observer.observe(container);
+    distributionObservers.set(container, observer);
+  }
+}
