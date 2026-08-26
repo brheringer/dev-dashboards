@@ -228,9 +228,13 @@ const rtRangeDays = document.getElementById("rtRangeDays");
 const rtChartEl = document.getElementById("rtChart");
 const rtChartHint = document.getElementById("rtChartHint");
 const rtChartAverage = document.getElementById("rtChartAverage");
+const rtFirstDerivative = document.getElementById("rtFirstDerivative");
+const rtSecondDerivative = document.getElementById("rtSecondDerivative");
 const rtScatterChartEl = document.getElementById("rtScatterChart");
 const rtScatterHint = document.getElementById("rtScatterHint");
 const rtScatterCount = document.getElementById("rtScatterCount");
+const rtScatterFirstDerivative = document.getElementById("rtScatterFirstDerivative");
+const rtScatterSecondDerivative = document.getElementById("rtScatterSecondDerivative");
 const rtDistributionChartEl = document.getElementById("rtDistributionChart");
 const rtDistributionHint = document.getElementById("rtDistributionHint");
 const rtDistributionStd = document.getElementById("rtDistributionStd");
@@ -944,6 +948,20 @@ function resolvingTimeStdDev(points) {
   return Math.sqrt(variance);
 }
 
+function formatResolvingTimeDerivative(value, order) {
+  if (value === null || value === undefined || !Number.isFinite(Number(value))) return "—";
+  const suffix = order === 2 ? " d/day²" : " d/day";
+  const abs = Math.abs(Number(value));
+  const digits = abs >= 100 ? 1 : abs >= 1 ? 2 : 4;
+  const formatted = abs.toLocaleString(undefined, {
+    maximumFractionDigits: digits,
+    minimumFractionDigits: 0,
+  });
+  if (value > 0) return `+${formatted}${suffix}`;
+  if (value < 0) return `−${formatted}${suffix}`;
+  return `${formatted}${suffix}`;
+}
+
 function paintResolvingTimeCharts(data) {
   const grainLabel = DEV_METRICS_GRAIN_LABELS[data.grain] || data.grain;
   const areaHint = data.areaPath ? ` · ${data.areaPath}` : "";
@@ -971,6 +989,35 @@ function paintResolvingTimeCharts(data) {
       stdDev === null ? "—" : `σ ${formatResolvingTimeDays(stdDev)}`;
   }
 
+  if (rtFirstDerivative) {
+    setSignedValue(
+      rtFirstDerivative,
+      data.firstDerivative,
+      formatResolvingTimeDerivative(data.firstDerivative, 1)
+    );
+  }
+  if (rtSecondDerivative) {
+    setSignedValue(
+      rtSecondDerivative,
+      data.secondDerivative,
+      formatResolvingTimeDerivative(data.secondDerivative, 2)
+    );
+  }
+  if (rtScatterFirstDerivative) {
+    setSignedValue(
+      rtScatterFirstDerivative,
+      data.scatterFirstDerivative,
+      formatResolvingTimeDerivative(data.scatterFirstDerivative, 1)
+    );
+  }
+  if (rtScatterSecondDerivative) {
+    setSignedValue(
+      rtScatterSecondDerivative,
+      data.scatterSecondDerivative,
+      formatResolvingTimeDerivative(data.scatterSecondDerivative, 2)
+    );
+  }
+
   if (activeRtChartTab === "scatter") {
     renderScatterChart(rtScatterChartEl, {
       points: scatterPoints,
@@ -978,6 +1025,7 @@ function paintResolvingTimeCharts(data) {
       formatTooltip: (point) =>
         `#${point.workItemId} · ${formatAxisDateForTooltip(point.date)} · ${formatResolvingTimeDays(point.value)}`,
       yMin: 0,
+      showTrendLine: true,
       emptyMessage: "No resolving time data in this date range.",
     });
     return;
@@ -997,6 +1045,7 @@ function paintResolvingTimeCharts(data) {
     points: data.points || [],
     formatY: (value) => formatResolvingTimeDays(value),
     yMin: 0,
+    showTrendLine: true,
     emptyMessage: "No resolving time data in this date range.",
   });
 }

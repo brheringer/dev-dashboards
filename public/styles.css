@@ -755,6 +755,14 @@ h1 {
   stroke-linecap: round;
 }
 
+.chart-trend-line {
+  fill: none;
+  stroke: #8fd9b0;
+  stroke-width: 2;
+  stroke-dasharray: 6 5;
+  stroke-linecap: round;
+}
+
 .distribution-mean {
   stroke: rgba(232, 238, 233, 0.45);
   stroke-width: 1.25;
@@ -852,6 +860,12 @@ h1 {
   gap: 0.5rem;
   padding-top: 1rem;
   margin-bottom: 1rem;
+}
+
+.tab-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
 
 .tab {

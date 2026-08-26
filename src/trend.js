@@ -1,6 +1,7 @@
 import { toBoundDate, isWithinRange } from "./details.js";
 import { aggregateCode, hasSprintBugTag, hasTechDebtTag } from "./metrics.js";
 import { isAreaPathOfInterest } from "./config.js";
+import { computeSeriesDerivatives } from "./derivatives.js";
 
 export const TREND_METRICS = {
   storyPoints: {
@@ -232,111 +233,6 @@ function buildTrendPoints(metricId, meta, cache, start, end, days, areaPath) {
   return codeSeries(sonar, days, metricId === "coverage" ? "coverage" : "ncloc");
 }
 
-function definedValueRun(points) {
-  const start = points.findIndex(
-    (point) =>
-      point.value !== null &&
-      point.value !== undefined &&
-      Number.isFinite(Number(point.value))
-  );
-  if (start < 0) return [];
-
-  const values = [];
-  for (let i = start; i < points.length; i += 1) {
-    const value = Number(points[i].value);
-    if (points[i].value === null || points[i].value === undefined || !Number.isFinite(value)) {
-      break;
-    }
-    values.push(value);
-  }
-  return values;
-}
-
-function roundDerivative(value) {
-  if (!Number.isFinite(value)) return null;
-  const abs = Math.abs(value);
-  if (abs >= 100) return Math.round(value * 10) / 10;
-  if (abs >= 1) return Math.round(value * 100) / 100;
-  return Math.round(value * 10000) / 10000;
-}
-
-function solve3x3(matrix, vector) {
-  const rows = matrix.map((row, index) => [...row, vector[index]]);
-  for (let col = 0; col < 3; col += 1) {
-    let pivotRow = col;
-    for (let row = col + 1; row < 3; row += 1) {
-      if (Math.abs(rows[row][col]) > Math.abs(rows[pivotRow][col])) pivotRow = row;
-    }
-    [rows[col], rows[pivotRow]] = [rows[pivotRow], rows[col]];
-    const pivot = rows[col][col];
-    if (Math.abs(pivot) < 1e-12) return null;
-    for (let j = col; j < 4; j += 1) rows[col][j] /= pivot;
-    for (let row = 0; row < 3; row += 1) {
-      if (row === col) continue;
-      const factor = rows[row][col];
-      for (let j = col; j < 4; j += 1) rows[row][j] -= factor * rows[col][j];
-    }
-  }
-  return [rows[0][3], rows[1][3], rows[2][3]];
-}
-
-function quadraticCoefficients(values) {
-  const n = values.length;
-  let sumT = 0;
-  let sumT2 = 0;
-  let sumT3 = 0;
-  let sumT4 = 0;
-  let sumY = 0;
-  let sumTY = 0;
-  let sumT2Y = 0;
-
-  for (let t = 0; t < n; t += 1) {
-    const t2 = t * t;
-    const y = values[t];
-    sumT += t;
-    sumT2 += t2;
-    sumT3 += t2 * t;
-    sumT4 += t2 * t2;
-    sumY += y;
-    sumTY += t * y;
-    sumT2Y += t2 * y;
-  }
-
-  return solve3x3(
-    [
-      [n, sumT, sumT2],
-      [sumT, sumT2, sumT3],
-      [sumT2, sumT3, sumT4],
-    ],
-    [sumY, sumTY, sumT2Y]
-  );
-}
-
-/**
- * Discrete derivatives of the plotted daily series.
- * 1st: mean daily change (chord slope).
- * 2nd: constant acceleration of the least-squares quadratic fit (2c in a+bt+ct²).
- */
-function computeDerivatives(points) {
-  const values = definedValueRun(points);
-  if (values.length < 2) {
-    return { firstDerivative: null, secondDerivative: null };
-  }
-
-  const steps = values.length - 1;
-  const firstDerivative = (values[values.length - 1] - values[0]) / steps;
-  let secondDerivative = null;
-  if (values.length >= 3) {
-    const coeffs = quadraticCoefficients(values);
-    if (coeffs) secondDerivative = 2 * coeffs[2];
-  }
-
-  return {
-    firstDerivative: roundDerivative(firstDerivative),
-    secondDerivative: roundDerivative(secondDerivative),
-  };
-}
-
 function collectBoundHintDates(metricId, meta, cache, areaPath) {
   const dates = [];
   if (metricId === "pullRequests") {
@@ -391,7 +287,7 @@ export function computeTrend(cache, filters = {}) {
   );
 
   const lastDefined = [...points].reverse().find((point) => point.value !== null);
-  const { firstDerivative, secondDerivative } = computeDerivatives(points);
+  const { firstDerivative, secondDerivative } = computeSeriesDerivatives(points);
   return {
     hasData: true,
     fetchedAt: cache.fetchedAt || null,

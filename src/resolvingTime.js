@@ -7,6 +7,7 @@ import {
   bucketToChartDate,
   todayIsoDate,
 } from "./devMetricsChart.js";
+import { computeDatedSeriesDerivatives } from "./derivatives.js";
 
 const ACTIVE_STATUS = "Active";
 const RESOLVED_STATUS = "Resolved";
@@ -174,6 +175,10 @@ function emptyResult(filters, grain) {
     summary: summarizeResolvingTimeRecords([]),
     points: [],
     scatterPoints: [],
+    firstDerivative: null,
+    secondDerivative: null,
+    scatterFirstDerivative: null,
+    scatterSecondDerivative: null,
     unit: "days",
   };
 }
@@ -213,6 +218,17 @@ export function computeResolvingTime(cache, filters = {}) {
     { maxDays, ignoreZero }
   );
   const keys = enumerateBuckets(startDate, endDate, grain);
+  const points = bucketAverageSeries(records, keys, grain);
+  const scatterPoints = scatterSeries(records);
+  const averageDerivatives = computeDatedSeriesDerivatives(
+    points.filter(
+      (point) =>
+        point.value !== null &&
+        point.value !== undefined &&
+        Number.isFinite(Number(point.value))
+    )
+  );
+  const scatterDerivatives = computeDatedSeriesDerivatives(scatterPoints);
 
   return {
     hasData: true,
@@ -224,8 +240,12 @@ export function computeResolvingTime(cache, filters = {}) {
     ignoreZero,
     grain,
     summary: summarizeResolvingTimeRecords(records),
-    points: bucketAverageSeries(records, keys, grain),
-    scatterPoints: scatterSeries(records),
+    points,
+    scatterPoints,
+    firstDerivative: averageDerivatives.firstDerivative,
+    secondDerivative: averageDerivatives.secondDerivative,
+    scatterFirstDerivative: scatterDerivatives.firstDerivative,
+    scatterSecondDerivative: scatterDerivatives.secondDerivative,
     unit: "days",
   };
 }

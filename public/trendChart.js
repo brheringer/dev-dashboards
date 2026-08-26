@@ -80,6 +80,64 @@ function segmentsFrom(points, toCoord) {
   return segments;
 }
 
+function linearRegression(xs, ys) {
+  const n = xs.length;
+  if (n < 2) return null;
+  let sumX = 0;
+  let sumY = 0;
+  let sumXX = 0;
+  let sumXY = 0;
+  for (let i = 0; i < n; i += 1) {
+    sumX += xs[i];
+    sumY += ys[i];
+    sumXX += xs[i] * xs[i];
+    sumXY += xs[i] * ys[i];
+  }
+  const denom = n * sumXX - sumX * sumX;
+  if (denom === 0) return null;
+  const slope = (n * sumXY - sumX * sumY) / denom;
+  const intercept = (sumY - slope * sumX) / n;
+  return { slope, intercept };
+}
+
+function appendTrendLine(svg, ns, { x0, y0, x1, y1, pad, innerW, innerH, clipId }) {
+  if (
+    !Number.isFinite(x0) ||
+    !Number.isFinite(y0) ||
+    !Number.isFinite(x1) ||
+    !Number.isFinite(y1) ||
+    x0 === x1
+  ) {
+    return;
+  }
+
+  if (clipId) {
+    let defs = svg.querySelector("defs");
+    if (!defs) {
+      defs = document.createElementNS(ns, "defs");
+      svg.insertBefore(defs, svg.firstChild);
+    }
+    const clip = document.createElementNS(ns, "clipPath");
+    clip.setAttribute("id", clipId);
+    const clipRect = document.createElementNS(ns, "rect");
+    clipRect.setAttribute("x", String(pad.left));
+    clipRect.setAttribute("y", String(pad.top));
+    clipRect.setAttribute("width", String(innerW));
+    clipRect.setAttribute("height", String(innerH));
+    clip.appendChild(clipRect);
+    defs.appendChild(clip);
+  }
+
+  const line = document.createElementNS(ns, "line");
+  line.setAttribute("x1", String(x0));
+  line.setAttribute("y1", String(y0));
+  line.setAttribute("x2", String(x1));
+  line.setAttribute("y2", String(y1));
+  line.setAttribute("class", "chart-trend-line");
+  if (clipId) line.setAttribute("clip-path", `url(#${clipId})`);
+  svg.appendChild(line);
+}
+
 const observers = new WeakMap();
 
 function paintChart(container, options) {
@@ -88,6 +146,7 @@ function paintChart(container, options) {
     formatY = (value) => String(value),
     yMin = null,
     yMax = null,
+    showTrendLine = false,
     emptyMessage = "No data in this date range.",
   } = options;
 
@@ -215,6 +274,32 @@ function paintChart(container, options) {
     svg.appendChild(line);
   }
 
+  if (showTrendLine) {
+    const xs = [];
+    const ys = [];
+    points.forEach((point, index) => {
+      if (point.value === null || point.value === undefined || !Number.isFinite(Number(point.value))) {
+        return;
+      }
+      xs.push(index);
+      ys.push(Number(point.value));
+    });
+    const fit = linearRegression(xs, ys);
+    if (fit) {
+      const lastIndex = Math.max(points.length - 1, 0);
+      appendTrendLine(svg, ns, {
+        x0: xAt(0),
+        y0: yAt(fit.intercept),
+        x1: xAt(lastIndex),
+        y1: yAt(fit.intercept + fit.slope * lastIndex),
+        pad,
+        innerW,
+        innerH,
+        clipId: "trendLineClip",
+      });
+    }
+  }
+
   const hoverLine = document.createElementNS(ns, "line");
   hoverLine.setAttribute("class", "trend-hover-line hidden");
   hoverLine.setAttribute("y1", String(pad.top));
@@ -321,6 +406,7 @@ function paintScatterChart(container, options) {
     formatTooltip = null,
     yMin = null,
     yMax = null,
+    showTrendLine = false,
     emptyMessage = "No data in this date range.",
   } = options;
 
@@ -416,6 +502,25 @@ function paintScatterChart(container, options) {
     dot.setAttribute("class", "scatter-dot");
     svg.appendChild(dot);
     dots.push({ point, cx, cy, ms });
+  }
+
+  if (showTrendLine) {
+    const fit = linearRegression(
+      times.map((ms) => Number(ms)),
+      values
+    );
+    if (fit) {
+      appendTrendLine(svg, ns, {
+        x0: xAt(xMin),
+        y0: yAt(fit.intercept + fit.slope * xMin),
+        x1: xAt(xMax),
+        y1: yAt(fit.intercept + fit.slope * xMax),
+        pad,
+        innerW,
+        innerH,
+        clipId: "scatterTrendLineClip",
+      });
+    }
   }
 
   const hoverDot = document.createElementNS(ns, "circle");
